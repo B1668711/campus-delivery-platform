@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>校园服务平台</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/responsive.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <!-- 顶部导航 -->
+    <div class="navbar">
+        <h1 id="navbar-title">校园服务平台</h1>
+    </div>
+    
+    <!-- 主容器 -->
+    <div class="container">
+        <!-- 主页面/服务选择 -->
+        <div id="main-page" class="page active">
+            <div class="user-profile">
+                <div class="user-avatar" id="user-avatar">U</div>
+                <div class="user-info">
+                    <div class="user-name" id="user-display-name">未设置用户名</div>
+                    <div class="user-id" id="user-display-id">ID: 加载中...</div>
+                </div>
+            </div>
+            
+            <div class="user-stats">
+                <div class="stat-item" onclick="showMyOrders()" style="cursor: pointer;">
+                    <div class="stat-value" id="my-orders-count">0</div>
+                        <div class="stat-label">我的订单</div>
+                    </div>
+                    <div class="stat-item" onclick="showCompletedOrders()" style="cursor: pointer;">
+                        <div class="stat-value" id="completed-orders-count">0</div>
+                        <div class="stat-label">已完成</div>
+                    </div>
+            </div>
+            
+            <div class="card">
+                <h2>选择服务类型</h2>
+                <p>请选择您需要的服务</p>
+                
+                <div class="service-grid">
+                    <div class="service-card" onclick="enterDeliveryService()">
+                        <div class="service-icon">
+                            <i class="fas fa-box"></i>
+                        </div>
+                        <div class="service-title">代取快递</div>
+                        <div class="service-desc">帮忙取送快递包裹</div>
+                    </div>
+                    
+                    <div class="service-card errand" onclick="enterErrandService()">
+                        <div class="service-icon">
+                            <i class="fas fa-running"></i>
+                        </div>
+                        <div class="service-title">校园跑腿</div>
+                        <div class="service-desc">帮忙购买、送件等</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="admin-link">
+                <p>管理员请点击：<a href="https://B1668711.github.io/campus-delivery-admin" target="_blank">进入管理平台</a></p>
+            </div>
+        </div>
+        
+        <!-- 代取快递首页 -->
+        <div id="delivery-home-page" class="page">
+            <div class="card">
+                <button class="btn btn-secondary" onclick="showPage('main-page')" style="margin-bottom: 15px;">
+                    <i class="fas fa-arrow-left"></i> 返回主页面
+                </button>
+                <h2>代取快递服务</h2>
+                <p>需要代取快递？发布订单让同学帮忙吧！</p>
+                
+                <div class="delivery-actions">
+                    <button class="btn btn-primary" onclick="showPage('order-page')">发布代取订单</button>
+                    <button class="btn btn-secondary" onclick="showPage('take-order-page')">领取代取任务</button>
+                </div>
+            </div>
+            
+            <h3 style="margin: 20px 0 10px;">我的代取订单</h3>
+            <div class="order-list" id="delivery-orders-list">
+                <div class="loading">
+                    <i class="fas fa-spinner fa-spin"></i> 加载中...
+                </div>
+            </div>
+        </div>
+        
+        <!-- 跑腿服务首页 -->
+        <div id="errand-home-page" class="page">
+            <div class="card">
+                <button class="btn btn-secondary" onclick="showPage('main-page')" style="margin-bottom: 15px;">
+                    <i class="fas fa-arrow-left"></i> 返回主页面
+                </button>
+                <h2>校园跑腿服务</h2>
+                <p>需要帮忙买东西、送文件？发布跑腿任务吧！</p>
+                
+                <div class="errand-actions">
+                    <button class="btn btn-success" onclick="showPage('errand-order-page')">发布跑腿任务</button>
+                    <button class="btn btn-secondary" onclick="showPage('take-errand-page')">领取跑腿任务</button>
+                </div>
+            </div>
+            
+            <h3 style="margin: 20px 0 10px;">我的跑腿任务</h3>
+            <div class="order-list" id="errand-orders-list">
+                <div class="loading">
+                    <i class="fas fa-spinner fa-spin"></i> 加载中...
+                </div>
+            </div>
+        </div>
+        
+        <!-- 发布代取快递订单页面 -->
+        <div id="order-page" class="page">
+            <div class="card">
+                <button class="btn btn-secondary" onclick="showPage('delivery-home-page')" style="margin-bottom: 15px;">
+                    <i class="fas fa-arrow-left"></i> 返回代取服务
+                </button>
+                
+                <h2>发布代取订单</h2>
+                
+                <div class="form-group">
+                    <label for="delivery-time" class="form-label required">期望送达时间</label>
+                    <input type="datetime-local" id="delivery-time" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="pickup-address" class="form-label required">快递地址</label>
+                    <input type="text" id="pickup-address" class="form-input" placeholder="例如：东门快递点、菜鸟驿站" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="delivery-address" class="form-label required">送达地址</label>
+                    <input type="text" id="delivery-address" class="form-input" placeholder="例如：3号楼205室" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="item-type" class="form-label required">物品类型</label>
+                    <select id="item-type" class="form-input" required>
+                        <option value="">请选择物品类型</option>
+                        <option value="日用品">日用品</option>
+                        <option value="化妆品">化妆品</option>
+                        <option value="床上用品">床上用品</option>
+                        <option value="运动器械">运动器械</option>
+                        <option value="其它">其它</option>
+                    </select>
+                </div>
+                
+                <div id="other-item-container">
+                    <!-- 当选择"其它"时，这里会动态添加一个输入框 -->
+                </div>
+                
+                <div class="form-group">
+                    <label for="pickup-code" class="form-label required">取件码</label>
+                    <input type="text" id="pickup-code" class="form-input" placeholder="请输入快递取件码" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="contact-name" class="form-label required">联系人</label>
+                    <input type="text" id="contact-name" class="form-input" placeholder="请输入您的姓名" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label required">联系方式类型</label>
+                    <div class="contact-type-selector">
+                        <button type="button" class="contact-type-btn active" data-type="wechat">
+                            <i class="fab fa-weixin"></i> 微信
+                        </button>
+                        <button type="button" class="contact-type-btn" data-type="phone">
+                            <i class="fas fa-phone"></i> 手机号
+                        </button>
+                        <button type="button" class="contact-type-btn" data-type="qq">
+                            <i class="fab fa-qq"></i> QQ号
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="contact-info" class="form-label required">联系方式</label>
+                    <input type="text" id="contact-info" class="form-input" placeholder="请输入您的联系方式" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="reward" class="form-label">酬劳（元）</label>
+                    <input type="number" id="reward" class="form-input" placeholder="请输入酬劳金额" min="0" step="0.5" value="5">
+                </div>
+                
+                <div class="form-group">
+                    <label for="notes" class="form-label">备注</label>
+                    <textarea id="notes" class="form-textarea" placeholder="可填写特殊要求或说明" rows="3"></textarea>
+                </div>
+                
+                <button class="btn btn-primary" id="submit-order">发布订单</button>
+                <button class="btn btn-secondary" style="margin-top: 10px;" onclick="showPage('delivery-home-page')">返回代取服务</button>
+            </div>
+        </div>
+        
+<!-- 领取"代取"任务页面 -->
+<div id="take-order-page" class="page">
+    <div class="card">
+        <button class="btn btn-secondary" onclick="showPage('delivery-home-page')" style="margin-bottom: 15px;">
+            <i class="fas fa-arrow-left"></i> 返回代取服务
+        </button>
+        
+        <h2>您的接单信息</h2>
+        <p>接单前请填写您的联系信息，方便发布人联系您。</p>
+        
+        <div class="form-group">
+            <label for="taker-name" class="form-label">您的姓名</label>
+            <input type="text" id="taker-name" class="form-input" placeholder="请输入您的姓名" required>
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">联系方式类型</label>
+            <div class="contact-type-selector">
+                <button type="button" class="contact-type-btn active" data-type="wechat">
+                    <i class="fab fa-weixin"></i> 微信
+                </button>
+                <button type="button" class="contact-type-btn" data-type="phone">
+                    <i class="fas fa-phone"></i> 手机号
+                </button>
+                <button type="button" class="contact-type-btn" data-type="qq">
+                    <i class="fab fa-qq"></i> QQ号
+                </button>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label for="taker-contact-info" class="form-label">联系方式</label>
+            <input type="text" id="taker-contact-info" class="form-input" placeholder="请输入您的联系方式" required>
+        </div>
+        
+        <button class="btn btn-primary" style="margin-top: 10px;" onclick="validateTakerInfo('delivery')">
+            <i class="fas fa-check-circle"></i> 确认接单信息
+        </button>
+    </div>
+    
+    <div id="available-orders">
+        <h3 style="margin: 20px 0 10px;">可接取的订单</h3>
+        <div class="order-list" id="available-orders-list">
+            <div class="loading">
+                <i class="fas fa-spinner fa-spin"></i> 加载中...
+            </div>
+        </div>
+    </div>
+</div>
+
+        
+        <!-- 发布跑腿任务页面 -->
+        <div id="errand-order-page" class="page">
+            <div class="card">
+                <button class="btn btn-secondary" onclick="showPage('errand-home-page')" style="margin-bottom: 15px;">
+                    <i class="fas fa-arrow-left"></i> 返回跑腿服务
+                </button>
+                
+                <h2>发布跑腿任务</h2>
+                
+                <div class="form-group">
+                    <label for="errand-title" class="form-label required">任务标题</label>
+                    <input type="text" id="errand-title" class="form-input" placeholder="例如：帮忙买奶茶、送文件到行政楼" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="errand-description" class="form-label required">任务描述</label>
+                    <textarea id="errand-description" class="form-textarea" placeholder="请详细描述您的需求" rows="3" required></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="errand-pickup" class="form-label required">取物地点</label>
+                    <input type="text" id="errand-pickup" class="form-input" placeholder="例如：学校东门奶茶店、图书馆打印店" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="errand-delivery" class="form-label required">送达地点</label>
+                    <input type="text" id="errand-delivery" class="form-input" placeholder="例如：3号楼205室、行政楼301" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="errand-deadline" class="form-label required">期望完成时间</label>
+                    <input type="datetime-local" id="errand-deadline" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="errand-reward" class="form-label required">跑腿酬劳（元）</label>
+                    <input type="number" id="errand-reward" class="form-input" placeholder="请输入跑腿酬劳" min="0" step="0.5" value="3" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="errand-contact-name" class="form-label required">联系人</label>
+                    <input type="text" id="errand-contact-name" class="form-input" placeholder="请输入您的姓名" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label required">联系方式类型</label>
+                    <div class="contact-type-selector">
+                        <button type="button" class="contact-type-btn active" data-type="wechat">
+                            <i class="fab fa-weixin"></i> 微信
+                        </button>
+                        <button type="button" class="contact-type-btn" data-type="phone">
+                            <i class="fas fa-phone"></i> 手机号
+                        </button>
+                        <button type="button" class="contact-type-btn" data-type="qq">
+                            <i class="fab fa-qq"></i> QQ号
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="errand-contact-info" class="form-label required">联系方式</label>
+                    <input type="text" id="errand-contact-info" class="form-input" placeholder="请输入您的联系方式" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="errand-notes" class="form-label">备注</label>
+                    <textarea id="errand-notes" class="form-textarea" placeholder="可填写特殊要求或说明" rows="2"></textarea>
+                </div>
+                
+                <button class="btn btn-success" id="submit-errand-order">发布跑腿任务</button>
+                <button class="btn btn-secondary" style="margin-top: 10px;" onclick="showPage('errand-home-page')">返回跑腿服务</button>
+            </div>
+        </div>
+        
+<!-- 领取跑腿任务页面 -->
+<div id="take-errand-page" class="page">
+    <div class="card">
+        <button class="btn btn-secondary" onclick="showPage('errand-home-page')" style="margin-bottom: 15px;">
+            <i class="fas fa-arrow-left"></i> 返回跑腿服务
+        </button>
+        
+        <h2>您的接单信息</h2>
+        <p>接单前请填写您的联系信息，方便发布人联系您。</p>
+        
+        <div class="form-group">
+            <label for="errand-taker-name" class="form-label">您的姓名</label>
+            <input type="text" id="errand-taker-name" class="form-input" placeholder="请输入您的姓名" required>
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">联系方式类型</label>
+            <div class="contact-type-selector">
+                <button type="button" class="contact-type-btn active" data-type="wechat">
+                    <i class="fab fa-weixin"></i> 微信
+                </button>
+                <button type="button" class="contact-type-btn" data-type="phone">
+                    <i class="fas fa-phone"></i> 手机号
+                </button>
+                <button type="button" class="contact-type-btn" data-type="qq">
+                    <i class="fab fa-qq"></i> QQ号
+                </button>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label for="errand-taker-contact-info" class="form-label">联系方式</label>
+            <input type="text" id="errand-taker-contact-info" class="form-input" placeholder="请输入您的联系方式" required>
+        </div>
+        
+        <button class="btn btn-success" style="margin-top: 10px;" onclick="validateTakerInfo('errand')">
+            <i class="fas fa-check-circle"></i> 确认接单信息
+        </button>
+    </div>
+    
+    <div id="available-errands">
+        <h3 style="margin: 20px 0 10px;">可接取的跑腿任务</h3>
+        <div class="order-list" id="available-errands-list">
+            <div class="loading">
+                <i class="fas fa-spinner fa-spin"></i> 加载中...
+            </div>
+        </div>
+    </div>
+</div>
+
+
+        
+        <!-- 聊天主页面 -->
+        <div id="chat-home-page" class="page">
+            <div class="card">
+                <button class="btn btn-secondary" onclick="showPage('main-page')" style="margin-bottom: 15px;">
+                    <i class="fas fa-arrow-left"></i> 返回首页
+                </button>
+                <h2>我的聊天</h2>
+                <p>查看所有订单的聊天记录</p>
+            </div>
+            
+            <h3 style="margin: 20px 0 10px;">配送中的订单</h3>
+            <div class="order-list" id="active-chat-orders">
+                <div class="loading">
+                    <i class="fas fa-spinner fa-spin"></i> 加载中...
+                </div>
+            </div>
+            
+            <h3 style="margin: 20px 0 10px;">已完成的订单</h3>
+            <div class="order-list" id="completed-chat-orders">
+                <div class="loading">
+                    <i class="fas fa-spinner fa-spin"></i> 加载中...
+                </div>
+            </div>
+        </div>
+
+        <!-- 我的订单页面 -->
+<div id="my-orders-page" class="page">
+    <div class="card">
+        <button class="btn btn-secondary" onclick="showPage('main-page')" style="margin-bottom: 15px;">
+            <i class="fas fa-arrow-left"></i> 返回首页
+        </button>
+        <h2>我的订单</h2>
+        <p>查看我发布和接取的所有订单</p>
+    </div>
+
+
+    <!-- 类型标签页 -->
+    <div class="order-tabs">
+        <button class="order-tab-btn active" onclick="switchOrderTab('all')">
+            <i class="fas fa-list"></i> 全部
+        </button>
+        <button class="order-tab-btn" onclick="switchOrderTab('delivery')">
+            <i class="fas fa-box"></i> 代取快递
+        </button>
+        <button class="order-tab-btn" onclick="switchOrderTab('errand')">
+            <i class="fas fa-running"></i> 跑腿任务
+        </button>
+    </div>
+
+    <!-- 简洁版状态筛选器 -->
+<div class="status-filter-tabs">
+    <button class="status-filter-btn active" onclick="switchStatusFilter('all')">全部</button>
+    <button class="status-filter-btn" onclick="switchStatusFilter('pending')">待接单</button>
+    <button class="status-filter-btn" onclick="switchStatusFilter('taken')">待完成</button>
+    <button class="status-filter-btn" onclick="switchStatusFilter('processing')">配送中</button>
+    <button class="status-filter-btn" onclick="switchStatusFilter('completed')">已完成</button>
+</div>
+    <div class="order-list" id="my-orders-list">
+        <div class="loading">
+            <i class="fas fa-spinner fa-spin"></i> 加载中...
+        </div>
+    </div>
+</div>
+
+        <!-- 已完成订单页面 -->
+        <div id="completed-orders-page" class="page">
+            <div class="card">
+                <button class="btn btn-secondary" onclick="showPage('main-page')" style="margin-bottom: 15px;">
+                    <i class="fas fa-arrow-left"></i> 返回首页
+                </button>
+                <h2>已完成订单</h2>
+                <p>查看已完成的所有订单</p>
+            </div>
+    
+            <!-- 类型标签页 -->
+            <div class="order-tabs">
+                <button class="order-tab-btn active" onclick="switchCompletedTab('all')">
+                    <i class="fas fa-list"></i> 全部
+                </button>
+                <button class="order-tab-btn" onclick="switchCompletedTab('delivery')">
+                    <i class="fas fa-box"></i> 代取快递
+                </button>
+                <button class="order-tab-btn" onclick="switchCompletedTab('errand')">
+                    <i class="fas fa-running"></i> 跑腿任务
+                </button>
+            </div>
+
+            <div class="order-list" id="completed-orders-list">
+                <div class="loading">
+                    <i class="fas fa-spinner fa-spin"></i> 加载中...
+                </div>
+            </div>
+        </div>
+
+        <!-- 设置页面 -->
+        <div id="settings-page" class="page">
+            <div class="card">
+                <h2>账户设置</h2>
+                
+                <div class="user-profile">
+                    <div class="user-avatar" id="settings-user-avatar">U</div>
+                    <div class="user-info">
+                        <div class="user-name" id="settings-user-name">未设置用户名</div>
+                        <div class="user-id" id="settings-user-id">ID: 加载中...</div>
+                    </div>
+                </div>
+                
+                <div class="settings-section">
+                    <h3><i class="fas fa-user"></i> 基本信息</h3>
+                    <div class="settings-item">
+                        <div class="settings-label">用户名</div>
+                        <div class="settings-value" id="display-user-name">未设置</div>
+                        <button class="settings-edit-btn" onclick="editUserName()">修改</button>
+                    </div>
+                    <div class="settings-item">
+                        <div class="settings-label">用户ID</div>
+                        <div class="settings-value" id="display-user-id">加载中...</div>
+                        <div style="width: 40px;"></div>
+                    </div>
+                </div>
+                
+                <div class="settings-section">
+                    <h3><i class="fas fa-address-book"></i> 默认联系信息</h3>
+                    <div class="settings-item">
+                        <div class="settings-label">自动填充联系信息</div>
+                        <div class="settings-value">
+                            <label class="setting-toggle">
+                                <input type="checkbox" id="auto-fill-toggle" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="settings-item" style="flex-direction: column; align-items: flex-start;">
+                        <div class="settings-label">默认联系方式类型</div>
+                        <div class="contact-type-selector">
+                            <button type="button" class="contact-type-btn active" data-type="wechat">
+                                <i class="fab fa-weixin"></i> 微信
+                            </button>
+                            <button type="button" class="contact-type-btn" data-type="phone">
+                                <i class="fas fa-phone"></i> 手机号
+                            </button>
+                            <button type="button" class="contact-type-btn" data-type="qq">
+                                <i class="fab fa-qq"></i> QQ号
+                            </button>
+                        </div>
+                    </div>
+                    <div class="settings-item" style="flex-direction: column; align-items: flex-start;">
+                        <div class="settings-label">默认联系方式</div>
+                        <input type="text" id="default-contact-info" class="setting-input" placeholder="请输入默认联系方式">
+                    </div>
+                    <div class="settings-item" style="flex-direction: column; align-items: flex-start;">
+                        <div class="settings-label">默认地址</div>
+                        <input type="text" id="default-address" class="setting-input" placeholder="请输入默认地址">
+                    </div>
+                    <div class="settings-item">
+                        <div class="settings-label"></div>
+                        <div class="settings-value">
+                            <button class="settings-edit-btn" onclick="saveDefaultInfo()">保存默认信息</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h3><i class="fab fa-weixin"></i> 微信绑定</h3>
+                    <div class="settings-item">
+                        <div class="settings-label">绑定状态</div>
+                        <div class="settings-value" id="wechat-bind-status">未绑定</div>
+                        <button class="settings-edit-btn" id="wechat-bind-btn" onclick="bindWeChatAccount()">绑定微信</button>
+                    </div>
+                    <div class="settings-item">
+                        <div class="settings-label">微信账号</div>
+                        <div class="settings-value" id="wechat-account-display">-</div>
+                        <button class="settings-edit-btn" id="wechat-unbind-btn" style="display: none;" onclick="unbindWeChatAccount()">解除绑定</button>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h3><i class="fab fa-alipay"></i> 支付宝绑定</h3>
+                    <div class="settings-item">
+                        <div class="settings-label">绑定状态</div>
+                        <div class="settings-value" id="alipay-bind-status">未绑定</div>
+                        <button class="settings-edit-btn" id="alipay-bind-btn" onclick="bindAlipayAccount()">绑定支付宝</button>
+                    </div>
+                    <div class="settings-item">
+                        <div class="settings-label">支付宝账号</div>
+                        <div class="settings-value" id="alipay-account-display">-</div>
+                        <button class="settings-edit-btn" id="alipay-unbind-btn" style="display: none;" onclick="unbindAlipayAccount()">解除绑定</button>
+                    </div>
+                </div>
+
+                <!-- 新增的帮助与客服部分 -->
+                <div class="settings-section">
+                    <h3><i class="fas fa-question-circle"></i> 帮助与客服</h3>
+                    <div class="help-item" onclick="showHelp('如何使用代取快递服务？', '在代取快递页面，您可以发布代取订单或接取他人的订单。发布订单时，请填写详细的取件地址、送达地址、取件码和期望送达时间。接取订单后，请及时联系发布者确认细节。')">
+                        <div class="help-icon">
+                            <i class="fas fa-box"></i>
+                        </div>
+                        <div class="help-content">
+                            <div class="help-title">如何使用代取快递服务？</div>
+                            <div class="help-desc">了解代取快递服务的完整使用流程</div>
+                        </div>
+                        <div class="help-arrow">
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="help-item" onclick="showHelp('如何使用跑腿服务？', '在跑腿服务页面，您可以发布跑腿任务或接取他人的任务。发布任务时，请详细描述您的需求、取物地点、送达地点和期望完成时间。接取任务后，请及时联系发布者确认细节。')">
+                        <div class="help-icon">
+                            <i class="fas fa-running"></i>
+                        </div>
+                        <div class="help-content">
+                            <div class="help-title">如何使用跑腿服务？</div>
+                            <div class="help-desc">了解跑腿服务的完整使用流程</div>
+                        </div>
+                        <div class="help-arrow">
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="help-item" onclick="showHelp('订单状态说明', '待接单：订单已发布，等待接单；已接单：订单已被接取，配送中；已送达：物品已送达，等待确认；已完成：订单已完成；已取消：订单已被取消。')">
+                        <div class="help-icon">
+                            <i class="fas fa-info-circle"></i>
+                        </div>
+                        <div class="help-content">
+                            <div class="help-title">订单状态说明</div>
+                            <div class="help-desc">了解不同订单状态的含义</div>
+                        </div>
+                        <div class="help-arrow">
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="help-item" onclick="contactCustomerService()">
+                        <div class="help-icon">
+                            <i class="fas fa-headset"></i>
+                        </div>
+                        <div class="help-content">
+                            <div class="help-title">联系客服</div>
+                            <div class="help-desc">如有问题，请联系我们的客服团队</div>
+                        </div>
+                        <div class="help-arrow">
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <button class="logout-btn" onclick="logout()">退出登录</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 底部导航栏 -->
+    <div class="tab-bar">
+        <div class="tab-item active" onclick="showPage('main-page')">
+            <div class="tab-icon"><i class="fas fa-home"></i></div>
+            <div>首页</div>
+        </div>
+        <div class="tab-item" onclick="enterDeliveryService()">
+            <div class="tab-icon"><i class="fas fa-box"></i></div>
+            <div>快递</div>
+        </div>
+        <div class="tab-item" onclick="enterErrandService()">
+            <div class="tab-icon"><i class="fas fa-running"></i></div>
+            <div>跑腿</div>
+        </div>
+        <div class="tab-item" onclick="showPage('chat-home-page')">
+            <div class="tab-icon"><i class="fas fa-comments"></i></div>
+            <div>聊天</div>
+        </div>
+        <div class="tab-item" onclick="showPage('settings-page')">
+            <div class="tab-icon"><i class="fas fa-cog"></i></div>
+            <div>设置</div>
+        </div>
+    </div>
+
+    <!-- JavaScript 文件 -->
+    <script src="js/config.js"></script>
+    <script src="js/components/feedback.js"></script>
+    <script src="js/utils/loading.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

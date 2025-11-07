@@ -1,0 +1,1682 @@
+/* 主样式文件 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+}
+
+body {
+    background-color: #f5f5f5;
+    color: #333;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 15px;
+    padding-bottom: 100px;
+    min-height: calc(100vh - 120px);
+    position: relative;
+    z-index: 1;
+}
+
+.navbar {
+    background: linear-gradient(135deg, #4da6ff, #3399ff);
+    color: white;
+    padding: 15px;
+    text-align: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.navbar h1 {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.tab-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: white;
+    display: flex;
+    justify-content: space-around;
+    padding: 10px 0;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+}
+
+.tab-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 12px;
+    color: #666;
+    flex: 1;
+    padding: 5px 0;
+    position: relative;
+}
+
+.tab-item.active {
+    color: #4da6ff;
+}
+
+.tab-icon {
+    font-size: 20px;
+    margin-bottom: 4px;
+}
+
+.card {
+    background-color: white;
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.btn {
+    padding: 14px 20px;
+    border-radius: 10px;
+    border: none;
+    font-size: 16px;
+    font-weight: 500;
+    text-align: center;
+    display: block;
+    width: 100%;
+    cursor: pointer;
+    transition: all 0.3s;
+    touch-action: manipulation;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #4da6ff, #3399ff);
+    color: white;
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #07c160, #05a050);
+    color: white;
+}
+
+.btn-secondary {
+    background-color: #f0f8ff;
+    color: #4da6ff;
+    border: 1px solid #4da6ff;
+}
+
+.btn:active {
+    transform: scale(0.98);
+}
+
+.user-profile {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    background-color: white;
+    border-radius: 12px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.user-avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4da6ff, #3399ff);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 24px;
+    font-weight: bold;
+    margin-right: 15px;
+}
+
+.user-info {
+    flex: 1;
+}
+
+.user-name {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+.user-id {
+    font-size: 14px;
+    color: #666;
+}
+
+.user-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.stat-item {
+    background-color: white;
+    border-radius: 10px;
+    padding: 15px;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.stat-value {
+    font-size: 24px;
+    font-weight: bold;
+    color: #4da6ff;
+    margin-bottom: 5px;
+}
+
+.stat-label {
+    font-size: 14px;
+    color: #666;
+}
+
+.service-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin: 20px 0;
+}
+
+.service-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s;
+    cursor: pointer;
+    border-top: 4px solid #4da6ff;
+}
+
+.service-card.errand {
+    border-top-color: #07c160;
+}
+
+.service-card:active {
+    transform: scale(0.98);
+}
+
+.service-icon {
+    font-size: 40px;
+    margin-bottom: 10px;
+    color: #4da6ff;
+}
+
+.service-card.errand .service-icon {
+    color: #07c160;
+}
+
+.service-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+.service-desc {
+    font-size: 12px;
+    color: #666;
+}
+
+.admin-link {
+    text-align: center;
+    margin-top: 20px;
+    padding: 15px;
+    background-color: #f0f8ff;
+    border-radius: 10px;
+}
+
+.admin-link a {
+    color: #4da6ff;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.page {
+    display: none;
+    width: 100%;
+    min-height: calc(100vh - 120px);
+}
+
+.page.active {
+    display: block;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #999;
+}
+
+.empty-state i {
+    font-size: 48px;
+    margin-bottom: 15px;
+    color: #e0e0e0;
+}
+
+.loading {
+    text-align: center;
+    padding: 20px;
+    color: #666;
+}
+
+.error-message {
+    background-color: #ffe6e6;
+    border: 1px solid #ffcccc;
+    color: #d63031;
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+/* 代取快递页面样式 */
+.delivery-actions {
+    display: flex;
+    gap: 10px;
+    margin: 15px 0;
+}
+
+.delivery-actions .btn {
+    flex: 1;
+    margin: 0;
+}
+
+/* 跑腿页面样式 */
+.errand-actions {
+    display: flex;
+    gap: 10px;
+    margin: 15px 0;
+}
+
+.errand-actions .btn {
+    flex: 1;
+    margin: 0;
+}
+
+/* 表单样式优化 */
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #333;
+}
+
+.form-label.required::after {
+    content: " *";
+    color: #ff4757;
+}
+
+.form-input {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 16px;
+    background-color: #fafafa;
+    transition: all 0.2s;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: #4da6ff;
+    background-color: white;
+    box-shadow: 0 0 0 2px rgba(77, 166, 255, 0.2);
+}
+
+.form-textarea {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 16px;
+    background-color: #fafafa;
+    transition: all 0.2s;
+    resize: vertical;
+    min-height: 100px;
+    font-family: inherit;
+}
+
+.form-textarea:focus {
+    outline: none;
+    border-color: #4da6ff;
+    background-color: white;
+    box-shadow: 0 0 0 2px rgba(77, 166, 255, 0.2);
+}
+
+/* 确保下拉框和日期输入框与其他输入框样式一致 */
+select.form-input,
+input[type="datetime-local"].form-input {
+    height: auto;
+    line-height: normal;
+}
+
+/* 订单项样式 */
+.order-item {
+    background-color: white;
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    border-left: 4px solid #4da6ff;
+    cursor: pointer;
+}
+
+.order-item.errand-item {
+    border-left-color: #07c160;
+}
+
+.order-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.order-id {
+    font-weight: 600;
+    color: #333;
+}
+
+.order-status {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.status-pending {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.status-taken {
+    background-color: #cce7ff;
+    color: #004085;
+}
+
+.status-processing {
+    background-color: #d1ecf1;
+    color: #0c5460;
+}
+
+.status-delivered {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.status-completed {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.status-cancelled {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.order-detail {
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.order-detail strong {
+    color: #555;
+}
+
+.order-type-tag {
+    display: inline-block;
+    padding: 2px 6px;
+    background-color: #f0f8ff;
+    color: #4da6ff;
+    border-radius: 4px;
+    font-size: 10px;
+    margin-left: 5px;
+}
+
+.order-actions {
+    margin-top: 15px;
+    display: flex;
+    gap: 10px;
+}
+
+.action-btn {
+    padding: 8px 15px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    flex: 1;
+    transition: all 0.2s;
+}
+
+.btn-take {
+    background-color: #4da6ff;
+    color: white;
+}
+
+.btn-take:active {
+    background-color: #3399ff;
+}
+
+/* 跑腿任务接单按钮 */
+.btn-take-errand {
+    background: linear-gradient(135deg, #07c160, #05a050);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 15px;
+    font-size: 14px;
+    cursor: pointer;
+    flex: 1;
+    transition: all 0.2s;
+}
+
+.btn-take-errand:active {
+    background: linear-gradient(135deg, #05a050, #048848);
+    transform: scale(0.98);
+}
+
+.btn-chat {
+    background-color: #17a2b8;
+    color: white;
+}
+
+.btn-chat:active {
+    background-color: #138496;
+}
+
+.btn-cancel {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.btn-cancel:active {
+    background-color: #e0a800;
+}
+
+.btn-delete {
+    background-color: #ff4757;
+    color: white;
+}
+
+.btn-delete:active {
+    background-color: #d63031;
+}
+
+/* 开始配送/开始任务按钮样式 */
+.btn-processing {
+    background-color: #28a745;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 15px;
+    font-size: 14px;
+    cursor: pointer;
+    flex: 1;
+    transition: all 0.2s;
+}
+
+.btn-processing:active {
+    background-color: #138496;
+    transform: scale(0.98);
+}
+
+.btn-delivered {
+    background-color: #28a745;
+    color: white;
+}
+
+.btn-delivered:active {
+    background-color: #218838;
+}
+
+.btn-confirm {
+    background-color: #17a2b8;
+    color: white;
+}
+
+.btn-confirm:active {
+    background-color: #138496;
+}
+
+.btn-rate {
+    background-color: #6f42c1;
+    color: white;
+}
+
+.btn-rate:active {
+    background-color: #5a359c;
+}
+
+/* 设置页面样式优化 */
+.settings-section {
+    margin-bottom: 25px;
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.settings-section h3 {
+    font-size: 18px;
+    margin-bottom: 20px;
+    color: #4da6ff;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #f0f8ff;
+    display: flex;
+    align-items: center;
+}
+
+.settings-section h3 i {
+    margin-right: 10px;
+    font-size: 20px;
+}
+
+.settings-item {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    background-color: #fafafa;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    transition: all 0.3s;
+    flex-wrap: nowrap;
+}
+
+.settings-item:hover {
+    background-color: #f0f8ff;
+    transform: translateY(-2px);
+}
+
+.settings-label {
+    flex: 1;
+    font-weight: 500;
+    color: #333;
+    white-space: nowrap;
+    min-width: 120px;
+}
+
+.settings-value {
+    flex: 2;
+    color: #666;
+}
+
+.settings-edit-btn {
+    background-color: #4da6ff;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 15px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.settings-edit-btn:hover {
+    background-color: #3399ff;
+    transform: translateY(-1px);
+}
+
+.logout-btn {
+    width: 100%;
+    padding: 12px;
+    background-color: #ff4757;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    margin-top: 30px;
+    margin-bottom: 30px;
+    margin-top: 20px;
+    transition: all 0.2s;
+    position: relative;
+    z-index: 2;
+}
+
+.logout-btn:active {
+    background-color: #ff3742;
+}
+
+/* 设置项样式 */
+.setting-toggle {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+    margin-left: 10px;
+}
+
+.setting-toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 24px;
+}
+
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked + .toggle-slider {
+    background-color: #4da6ff;
+}
+
+input:checked + .toggle-slider:before {
+    transform: translateX(20px);
+}
+
+.setting-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    font-size: 14px;
+    margin-top: 5px;
+}
+
+/* 联系方式选择器样式 */
+.contact-type-selector {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    width: 100%;
+}
+
+.contact-type-btn {
+    flex: 1;
+    margin: 0 4px;
+    padding: 10px 5px;
+    border: 1px solid #e0e0e0;
+    background-color: white;
+    color: #666;
+    border-radius: 8px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+    white-space: nowrap;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.contact-type-btn:first-child {
+    margin-left: 0;
+}
+
+.contact-type-btn:last-child {
+    margin-right: 0;
+}
+
+.contact-type-btn.active {
+    background-color: #4da6ff;
+    color: white;
+    border-color: #4da6ff;
+}
+
+.contact-type-btn i {
+    margin-right: 4px;
+    font-size: 12px;
+}
+
+/* 聊天模态框样式 */
+.chat-message {
+    margin-bottom: 10px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    max-width: 80%;
+    word-wrap: break-word;
+}
+
+.chat-message.own {
+    background: #4da6ff;
+    color: white;
+    align-self: flex-end;
+}
+
+.chat-message.other {
+    background: #f0f0f0;
+    color: #333;
+    align-self: flex-start;
+}
+
+.chat-sender {
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+.chat-time {
+    font-size: 10px;
+    opacity: 0.6;
+    text-align: right;
+}
+
+/* 未读消息徽章样式 */
+.unread-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background-color: #ff4757;
+    color: white;
+    border-radius: 50%;
+    min-width: 18px;
+    height: 18px;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    font-weight: bold;
+    box-shadow: 0 2px 4px rgba(255, 71, 87, 0.3);
+    border: 2px solid white;
+    z-index: 10;
+}
+
+/* 增强有未读消息的订单项视觉效果 */
+.chat-order-unread {
+    border-left: 4px solid #ff4757 !important;
+    background-color: #fff9f9 !important;
+    box-shadow: 0 2px 8px rgba(255, 71, 87, 0.15) !important;
+}
+
+.chat-order-unread .order-header {
+    font-weight: bold;
+}
+
+/* 为订单ID添加特殊样式 */
+.order-id.has-unread {
+    font-weight: 700;
+    color: #d63031;
+}
+
+/* 为有未读消息的订单添加闪烁动画 */
+@keyframes pulse-unread {
+    0% { background-color: #fff9f9; }
+    50% { background-color: #ffe6e6; }
+    100% { background-color: #fff9f9; }
+}
+
+.chat-order-unread.new-message {
+    animation: pulse-unread 2s ease-in-out;
+}
+
+.chat-order-unread {
+    border-left: 4px solid #ff4757 !important;
+}
+
+.chat-order-unread .order-header {
+    font-weight: bold;
+}
+
+/* 聊天按钮徽章样式 */
+.btn-chat {
+    position: relative;
+}
+
+.chat-btn-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background-color: #ff4757;
+    color: white;
+    border-radius: 50%;
+    min-width: 20px;
+    height: 20px;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    font-weight: bold;
+    box-shadow: 0 2px 4px rgba(255, 71, 87, 0.3);
+    border: 2px solid white;
+}
+
+/* 订单标签页样式 */
+.order-tabs {
+    display: flex;
+    margin-bottom: 15px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.order-tab-btn {
+    flex: 1;
+    padding: 10px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: #666;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.order-tab-btn.active {
+    color: #4da6ff;
+    border-bottom-color: #4da6ff;
+    font-weight: 500;
+}
+
+.order-tab-btn:hover {
+    background-color: #f5f5f5;
+}
+
+/* 评价模态框样式 */
+.rating-stars {
+    display: flex;
+    justify-content: center;
+    margin: 15px 0;
+    font-size: 24px;
+    color: #ffc107;
+}
+
+.rating-star {
+    cursor: pointer;
+    margin: 0 5px;
+    transition: all 0.2s;
+}
+
+.rating-star:hover {
+    transform: scale(1.2);
+}
+
+.rating-star.active {
+    color: #ffc107;
+}
+
+/* 订单详情模态框样式 */
+.order-detail-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.order-detail-content {
+    background: white;
+    width: 90%;
+    max-width: 500px;
+    max-height: 80%;
+    border-radius: 12px;
+    overflow-y: auto;
+    padding: 0;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+/* 成功提示模态框样式 */
+.success-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.success-modal-content {
+    background: white;
+    width: 80%;
+    max-width: 300px;
+    border-radius: 15px;
+    padding: 25px;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    animation: slideUp 0.3s ease-out;
+}
+
+.success-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #07c160, #05a050);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 15px;
+    color: white;
+    font-size: 24px;
+}
+
+.success-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.success-message {
+    color: #666;
+    margin-bottom: 20px;
+    line-height: 1.5;
+}
+
+.success-confirm-btn {
+    background: linear-gradient(135deg, #4da6ff, #3399ff);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 30px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+    width: 100%;
+}
+
+.success-confirm-btn:active {
+    transform: scale(0.98);
+    background: linear-gradient(135deg, #3399ff, #2980ff);
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.order-detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 24px;
+    border-bottom: 1px solid #e0e0e0;
+    position: sticky;
+    top: 0;
+    background: white;
+    z-index: 10;
+    margin-bottom: 0;
+}
+
+.order-detail-body {
+    padding: 20px 24px 24px;
+    background-color: #f8f9fa;
+}
+
+.order-detail-section {
+    margin-bottom: 20px;
+    background: white;
+    border-radius: 10px;
+    padding: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.order-detail-section h4 {
+    margin-bottom: 12px;
+    color: #4da6ff;
+    font-size: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.order-detail-info {
+    background: #f9f9f9;
+    padding: 12px;
+    border-radius: 8px;
+}
+
+.order-detail-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.order-detail-item:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.order-detail-title {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.order-detail-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #666;
+}
+
+.order-detail-section {
+    margin-bottom: 15px;
+}
+
+.order-detail-section h4 {
+    margin-bottom: 8px;
+    color: #4da6ff;
+    font-size: 16px;
+}
+
+.order-detail-info {
+    background: #f9f9f9;
+    padding: 10px;
+    border-radius: 8px;
+}
+
+.order-detail-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.order-detail-item:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.order-detail-label {
+    font-weight: 500;
+    color: #555;
+}
+
+.order-detail-value {
+    color: #333;
+    text-align: right;
+}
+
+/* 移动端优化样式 */
+@media (max-width: 768px) {
+    .container {
+        padding: 10px;
+        padding-bottom: 70px;
+    }
+    
+    .page {
+        min-height: calc(100vh - 110px);
+    }
+    
+    .status-filter-btn {
+        min-width: 60px;
+        padding: 8px 10px;
+        font-size: 12px;
+        flex: 1;
+        min-width: 0;
+    }
+    
+    /* 移动端日期时间输入框优化 */
+    input[type="datetime-local"] {
+        height: auto;
+        padding: 14px 15px;
+        font-size: 16px;
+        -webkit-appearance: none;
+        border-radius: 8px;
+        line-height: normal;
+    }
+    
+    /* 移动端下拉选择框优化 */
+    select {
+        height: auto;
+        padding: 14px 15px;
+        padding-right: 45px;
+        font-size: 16px;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+        border-radius: 8px;
+        background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-position: right 15px center;
+        background-size: 16px;
+        line-height: normal;
+    }
+    
+    #other-item-name {
+        padding: 14px 15px;
+        font-size: 16px;
+        height: 48px;
+    }
+    
+    .container {
+        padding: 10px;
+    }
+    
+    .card {
+        padding: 12px;
+    }
+    
+    .btn {
+        padding: 16px 20px;
+    }
+    
+    .service-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .form-input, .form-textarea {
+        padding: 14px 15px;
+    }
+    
+    /* 类型标签页在移动端的响应式样式 */
+    .order-tabs {
+        padding: 6px;
+    }
+    
+    .order-tab-btn {
+        padding: 10px 12px;
+        font-size: 13px;
+        min-width: 70px;
+    }
+    
+    .order-tab-btn i {
+        margin-right: 4px;
+    }
+    
+    /* 状态筛选器在移动端的响应式样式 */
+    .status-filter-tabs {
+        flex-wrap: wrap;
+    }
+    
+    .status-filter-btn {
+        min-width: 70px;
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+}
+
+/* 简洁版状态筛选器 */
+.status-filter-tabs {
+    display: flex;
+    margin-bottom: 15px;
+    background: white;
+    border-radius: 12px;
+    padding: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    border: 1px solid #f0f0f0;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.status-filter-btn {
+    flex: 1;
+    min-width: 80px;
+    padding: 10px 16px;
+    background: none;
+    border: none;
+    border-radius: 8px;
+    color: #666;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.status-filter-btn:hover {
+    background: #f8f9fa;
+    color: #4da6ff;
+}
+
+.status-filter-btn.active {
+    background: linear-gradient(135deg, #4da6ff, #3399ff);
+    color: white;
+    box-shadow: 0 2px 8px rgba(77, 166, 255, 0.3);
+}
+
+/* 类型标签页保持原有样式，但调整间距 */
+.order-tabs {
+    display: flex;
+    margin-bottom: 15px;
+    border-bottom: 2px solid #f0f8ff;
+    background: white;
+    border-radius: 12px;
+    padding: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    overflow-x: auto;
+    white-space: nowrap;
+    flex-wrap: nowrap;
+}
+
+.order-tab-btn {
+    flex: 1;
+    min-width: 80px;
+    padding: 12px 16px;
+    background: none;
+    border: none;
+    border-radius: 10px;
+    color: #666;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.order-tab-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, rgba(77, 166, 255, 0.1), rgba(51, 153, 255, 0.1));
+    transition: left 0.3s ease;
+}
+
+.order-tab-btn:hover::before {
+    left: 0;
+}
+
+.order-tab-btn:hover {
+    color: #4da6ff;
+    transform: translateY(-1px);
+}
+
+.order-tab-btn.active {
+    background: linear-gradient(135deg, #4da6ff, #3399ff);
+    color: white;
+    box-shadow: 0 4px 12px rgba(77, 166, 255, 0.3);
+}
+
+.order-tab-btn.active::before {
+    display: none;
+}
+
+/* 评价星级样式 */
+.rating-stars {
+    display: flex;
+    justify-content: center;
+    margin: 15px 0;
+    font-size: 32px;
+    gap: 10px;
+}
+
+.rating-star {
+    cursor: pointer;
+    color: #ddd;
+    transition: all 0.2s;
+    position: relative;
+}
+
+.rating-star:hover {
+    transform: scale(1.2);
+    color: #ffc107;
+}
+
+.rating-star.active {
+    color: #ffc107;
+    text-shadow: 0 0 10px rgba(255, 193, 7, 0.5);
+}
+
+.rating-star.selected {
+    color: #ff9800;
+    transform: scale(1.1);
+}
+
+/* 评分显示 */
+.rating-display {
+    text-align: center;
+    margin-top: 10px;
+    font-size: 14px;
+    color: #666;
+    min-height: 20px;
+}
+
+/* 评价模态框优化 */
+#rating-modal .rating-star {
+    font-size: 40px;
+}
+
+#rating-modal .rating-star:hover {
+    transform: scale(1.3);
+}
+
+/* 添加震动动画 */
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+.shake {
+    animation: shake 0.5s ease-in-out;
+}
+
+/* 帮助与客服样式 */
+.help-item {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    background-color: #fafafa;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    transition: all 0.3s;
+    cursor: pointer;
+}
+
+.help-item:hover {
+    background-color: #f0f8ff;
+    transform: translateY(-2px);
+}
+
+.help-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4da6ff, #3399ff);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 18px;
+    margin-right: 15px;
+}
+
+.help-content {
+    flex: 1;
+}
+
+.help-title {
+    font-weight: 600;
+    margin-bottom: 5px;
+    color: #333;
+}
+
+.help-desc {
+    font-size: 14px;
+    color: #666;
+}
+
+.help-arrow {
+    color: #999;
+    font-size: 14px;
+}
+
+/* 订单筛选样式 */
+.filter-container {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+}
+
+.filter-select {
+    flex: 1;
+    min-width: 120px;
+    padding: 10px 15px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    background-color: white;
+    font-size: 14px;
+    color: #333;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.filter-select:focus {
+    outline: none;
+    border-color: #4da6ff;
+    box-shadow: 0 0 0 2px rgba(77, 166, 255, 0.2);
+}
+
+/* 订单类型标签样式增强 */
+.order-type-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    margin-left: 5px;
+}
+
+.order-type-delivery {
+    background-color: #e6f2ff;
+    color: #4da6ff;
+}
+
+.order-type-errand {
+    background-color: #e6f7ed;
+    color: #07c160;
+}
+
+/* 添加淡入动画 */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* 修复设置页面布局，确保退出登录按钮可见 */
+#settings-page .card {
+    padding-bottom: 30px;
+    margin-bottom: 20px;
+}
+
+.settings-section:last-child {
+    margin-bottom: 40px;
+}
+
+#settings-page {
+    padding-bottom: 40px;
+}
+
+#settings-page .container {
+    padding-bottom: 120px;
+}
+
+/* 修复容器底部内边距 */
+.container {
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 15px;
+    padding-bottom: 100px;
+    min-height: calc(100vh - 120px);
+    position: relative;
+    z-index: 1;
+}
+
+/* 修复各个页面的底部边距 */
+#main-page,
+#delivery-home-page,
+#errand-home-page,
+#chat-home-page,
+#my-orders-page,
+#completed-orders-page {
+    padding-bottom: 40px;
+}
+
+/* 确保页面容器有足够的空间 */
+.page {
+    display: none;
+    width: 100%;
+    min-height: calc(100vh - 120px);
+    position: relative;
+}
+
+.page.active {
+    display: block;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+/* 确保底部导航栏在最上层 */
+.tab-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: white;
+    display: flex;
+    justify-content: space-around;
+    padding: 10px 0;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+    .container {
+        padding: 10px;
+        padding-bottom: 80px;
+    }
+    
+    .page {
+        min-height: calc(100vh - 110px);
+    }
+    
+    #main-page,
+    #delivery-home-page,
+    #errand-home-page,
+    #chat-home-page,
+    #my-orders-page,
+    #completed-orders-page {
+        padding-bottom: 30px;
+    }
+    
+    .status-filter-tabs {
+        flex-wrap: wrap;
+    }
+    
+    .status-filter-btn {
+        min-width: 70px;
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+    
+    .order-tabs {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .order-tab-btn {
+        text-align: center;
+    }
+    
+    /* 设置页面移动端适配 */
+    .settings-item {
+        flex-wrap: nowrap;
+        min-width: 0;
+    }
+    
+    .settings-label {
+        min-width: 100px;
+        font-size: 14px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    /* 超小屏幕适配 */
+    @media (max-width: 360px) {
+        .status-filter-btn {
+            min-width: 55px;
+            padding: 6px 8px;
+            font-size: 11px;
+        }
+        
+        .contact-type-btn {
+            padding: 6px 3px;
+            font-size: 11px;
+            margin: 0 2px;
+        }
+        
+        .contact-type-btn i {
+            margin-right: 2px;
+            font-size: 10px;
+        }
+        
+        .settings-label {
+            min-width: 90px;
+            font-size: 13px;
+        }
+        
+        .settings-item {
+            padding: 12px 10px;
+        }
+    }
+    
+    .contact-type-btn {
+        padding: 8px 4px;
+        font-size: 12px;
+        margin: 0 3px;
+    }
+    
+    .contact-type-btn i {
+        margin-right: 3px;
+        font-size: 11px;
+    }
+    
+    /* 设置页面超小屏幕适配 */
+    .settings-label {
+        min-width: 90px;
+        font-size: 13px;
+    }
+    
+    .settings-item {
+        padding: 12px 10px;
+    }
+    
+    #settings-page .container {
+        padding-bottom: 100px;
+    }
+    
+    #settings-page .logout-btn {
+        margin-top: 40px;
+        margin-bottom: 40px;
+    }
+}
