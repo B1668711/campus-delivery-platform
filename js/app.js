@@ -1425,6 +1425,11 @@ async function renderErrandOrders() {
             getAllUnreadMessageCounts('errand')
         ]);
         
+        // 筛选当前用户的订单
+        const myOrders = orders.filter(order => 
+            order.created_by === currentUser.id || order.taken_by === currentUser.id
+        );
+        
         // 更新首页统计数据
         updateMainPageStats();
         
@@ -3218,91 +3223,96 @@ if (pageId === 'take-errand-page') {
             }
         }
 
-        // 渲染聊天主页
-        async function renderChatHome() {
-            const activeChatOrders = document.getElementById('active-chat-orders');
-            const completedChatOrders = document.getElementById('completed-chat-orders');
-            
-            try {
-                // 使用带缓存的函数获取订单数据
-                const [deliveryOrders, errandOrders] = await Promise.all([
-                    getCachedDeliveryOrders(),
-                    getCachedErrandOrders()
-                ]);
-                
-                // 获取当前用户相关的订单
-                const myDeliveryOrders = deliveryOrders.filter(order => 
-                    order.created_by === currentUser.id || order.taken_by === currentUser.id
-                );
-                
-                const myErrandOrders = errandOrders.filter(order => 
-                    order.created_by === currentUser.id || order.taken_by === currentUser.id
-                );
-                
-                const allOrders = [...myDeliveryOrders, ...myErrandOrders];
-                
-                // 分离配送中和已完成的订单
-                const activeOrders = allOrders.filter(order => 
-                    order.status === 'taken' || order.status === 'processing' || order.status === 'delivered'
-                );
-                
-                const completedOrders = allOrders.filter(order => 
-                    order.status === 'completed' || order.status === 'cancelled'
-                );
-                
-                // 使用虚拟滚动渲染配送中的订单
-                if (activeChatOrders) {
-                    if (activeOrders.length === 0) {
-                        activeChatOrders.innerHTML = `
-                            <div class="empty-state">
-                                <i class="fas fa-comments"></i>
-                                <p>暂无配送中的订单</p>
-                            </div>
-                        `;
-                    } else {
-                        // 创建虚拟滚动实例
-                        const virtualScroll = new VirtualScroll(activeChatOrders, 150, (order) => {
-                            const unreadCount = getUnreadMessageCountSync(order.id, order.title ? 'errand' : 'delivery');
-                            return createChatOrderItemHTML(order, unreadCount);
-                        });
-                        virtualScroll.setItems(activeOrders);
-                    }
-                }
-                
-                // 使用虚拟滚动渲染已完成的订单
-                if (completedChatOrders) {
-                    if (completedOrders.length === 0) {
-                        completedChatOrders.innerHTML = `
-                            <div class="empty-state">
-                                <i class="fas fa-check-circle"></i>
-                                <p>暂无已完成的订单</p>
-                            </div>
-                        `;
-                    } else {
-                        // 创建虚拟滚动实例
-                        const virtualScroll = new VirtualScroll(completedChatOrders, 150, (order) => {
-                            const unreadCount = getUnreadMessageCountSync(order.id, order.title ? 'errand' : 'delivery');
-                            return createChatOrderItemHTML(order, unreadCount);
-                        });
-                        virtualScroll.setItems(completedOrders);
-                    }
-                }
-                
-            } catch (error) {
-                console.error('加载聊天主页失败:', error);
-                if (activeChatOrders) {
-                    activeChatOrders.innerHTML = `
-                        <div class="error-message">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            <p>加载失败: ${error.message}</p>
-                        </div>
-                    `;
-                }
-                if (completedChatOrders) {
-                    completedChatOrders.innerHTML = '';
+// 渲染聊天主页
+async function renderChatHome() {
+    const activeChatOrders = document.getElementById('active-chat-orders');
+    const completedChatOrders = document.getElementById('completed-chat-orders');
+    
+    try {
+        // 使用带缓存的函数获取订单数据
+        const [deliveryOrders, errandOrders] = await Promise.all([
+            getCachedDeliveryOrders(),
+            getCachedErrandOrders()
+        ]);
+        
+        // 获取当前用户相关的订单
+        const myDeliveryOrders = deliveryOrders.filter(order => 
+            order.created_by === currentUser.id || order.taken_by === currentUser.id
+        );
+        
+        const myErrandOrders = errandOrders.filter(order => 
+            order.created_by === currentUser.id || order.taken_by === currentUser.id
+        );
+        
+        const allOrders = [...myDeliveryOrders, ...myErrandOrders];
+        
+        // 分离配送中和已完成的订单
+        const activeOrders = allOrders.filter(order => 
+            order.status === 'taken' || order.status === 'processing' || order.status === 'delivered'
+        );
+        
+        const completedOrders = allOrders.filter(order => 
+            order.status === 'completed' || order.status === 'cancelled'
+        );
+        
+        // 直接渲染配送中的订单（不使用虚拟滚动）
+        if (activeChatOrders) {
+            if (activeOrders.length === 0) {
+                activeChatOrders.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-comments"></i>
+                        <p>暂无配送中的订单</p>
+                    </div>
+                `;
+            } else {
+                activeChatOrders.innerHTML = '';
+                for (const order of activeOrders) {
+                    const unreadCount = await getUnreadMessageCount(order.id, order.title ? 'errand' : 'delivery');
+                    const orderHTML = createChatOrderItemHTML(order, unreadCount);
+                    activeChatOrders.insertAdjacentHTML('beforeend', orderHTML);
                 }
             }
         }
+        
+        // 直接渲染已完成的订单（不使用虚拟滚动）
+        if (completedChatOrders) {
+            if (completedOrders.length === 0) {
+                completedChatOrders.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-check-circle"></i>
+                        <p>暂无已完成的订单</p>
+                    </div>
+                `;
+            } else {
+                completedChatOrders.innerHTML = '';
+                for (const order of completedOrders) {
+                    const unreadCount = await getUnreadMessageCount(order.id, order.title ? 'errand' : 'delivery');
+                    const orderHTML = createChatOrderItemHTML(order, unreadCount);
+                    completedChatOrders.insertAdjacentHTML('beforeend', orderHTML);
+                }
+            }
+        }
+        
+    } catch (error) {
+        console.error('加载聊天主页失败:', error);
+        if (activeChatOrders) {
+            activeChatOrders.innerHTML = `
+                <div class="error-message">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <p>加载失败: ${error.message}</p>
+                </div>
+            `;
+        }
+        if (completedChatOrders) {
+            completedChatOrders.innerHTML = `
+                <div class="error-message">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <p>加载失败: ${error.message}</p>
+                </div>
+            `;
+        }
+    }
+}
 
         // 同步获取未读消息数量（用于虚拟滚动）
         function getUnreadMessageCountSync(orderId, orderType) {
@@ -3311,71 +3321,74 @@ if (pageId === 'take-errand-page') {
             return 0;
         }
 
-        // 创建聊天订单项HTML（用于虚拟滚动）
-        function createChatOrderItemHTML(order, unreadCount) {
-            let statusClass = '';
-            let statusText = '';
-            
-            switch(order.status) {
-                case 'pending':
-                    statusClass = 'status-pending';
-                    statusText = '待接单';
-                    break;
-                case 'taken':
-                    statusClass = 'status-taken';
-                    statusText = '已接单';
-                    break;
-                case 'processing':
-                    statusClass = 'status-processing';
-                    statusText = '配送中';
-                    break;
-                case 'delivered':
-                    statusClass = 'status-delivered';
-                    statusText = '已送达';
-                    break;
-                case 'completed':
-                    statusClass = 'status-completed';
-                    statusText = '已完成';
-                    break;
-                case 'cancelled':
-                    statusClass = 'status-cancelled';
-                    statusText = '已取消';
-                    break;
-            }
-            
-            // 判断订单类型
-            const isDelivery = !order.title;
-            const orderType = isDelivery ? '快递' : '跑腿';
-            const orderTitle = isDelivery ? '代取快递' : order.title;
-            
-            // 判断用户角色
-            const isMyOrder = order.created_by === currentUser.id;
-            const userRole = isMyOrder ? '发布者' : '接单者';
-            const otherUserName = isMyOrder ? (order.taker_name || '等待接单') : order.contact_name;
-            
-            return `
-                <div class="order-item ${order.title ? 'errand-item' : ''} ${unreadCount > 0 ? 'chat-order-unread' : ''}">
-                    <div class="order-header">
-                        <div class="order-id">
-                            ${order.id.slice(-8)}
-                            <span class="order-type-tag">${orderType}</span>
-                            <span class="order-type-tag">${userRole}</span>
-                            ${unreadCount > 0 ? `<span class="unread-badge">${unreadCount}</span>` : ''}
-                        </div>
-                        <div class="order-status ${statusClass}">${statusText}</div>
-                    </div>
-                    <div class="order-details">
-                        <div class="order-detail"><strong>${isDelivery ? '快递' : '任务'}:</strong> ${orderTitle}</div>
-                        <div class="order-detail"><strong>对方:</strong> ${otherUserName}</div>
-                        <div class="order-detail"><strong>酬劳:</strong> ${order.reward}元</div>
-                    </div>
-                    <div class="order-actions">
-                        ${(order.status === 'taken' || order.status === 'processing' || order.status === 'delivered') ? 
-                        `<button class="action-btn btn-chat" onclick="openChat('${order.id}', '${isDelivery ? 'delivery' : 'errand'}')" style="position: relative;">进入聊天${unreadCount > 0 ? `<span class="chat-btn-badge">${unreadCount > 99 ? '99+' : unreadCount}</span>` : ''}</button>` : ''}
-                    </div>
+// 创建聊天订单项HTML（用于聊天主页）
+function createChatOrderItemHTML(order, unreadCount) {
+    let statusClass = '';
+    let statusText = '';
+    
+    switch(order.status) {
+        case 'pending':
+            statusClass = 'status-pending';
+            statusText = '待接单';
+            break;
+        case 'taken':
+            statusClass = 'status-taken';
+            statusText = '已接单';
+            break;
+        case 'processing':
+            statusClass = 'status-processing';
+            statusText = '配送中';
+            break;
+        case 'delivered':
+            statusClass = 'status-delivered';
+            statusText = '已送达';
+            break;
+        case 'completed':
+            statusClass = 'status-completed';
+            statusText = '已完成';
+            break;
+        case 'cancelled':
+            statusClass = 'status-cancelled';
+            statusText = '已取消';
+            break;
+    }
+    
+    // 判断订单类型
+    const isDelivery = !order.title;
+    const orderType = isDelivery ? 'delivery' : 'errand';
+    const orderTypeName = isDelivery ? '快递' : '跑腿';
+    const orderTitle = isDelivery ? '代取快递' : order.title;
+    
+    // 判断用户角色
+    const isMyOrder = order.created_by === currentUser.id;
+    const userRole = isMyOrder ? '发布者' : '接单者';
+    const otherUserName = isMyOrder ? (order.taker_name || '等待接单') : order.contact_name;
+    
+    return `
+        <div class="order-item ${order.title ? 'errand-item' : ''} ${unreadCount > 0 ? 'chat-order-unread' : ''}">
+            <div class="order-header">
+                <div class="order-id">
+                    ${order.id.slice(-8)}
+                    <span class="order-type-tag">${orderTypeName}</span>
+                    <span class="order-type-tag">${userRole}</span>
+                    ${unreadCount > 0 ? `<span class="unread-badge">${unreadCount}</span>` : ''}
                 </div>
-            `;
-        }
+                <div class="order-status ${statusClass}">${statusText}</div>
+            </div>
+            <div class="order-details">
+                <div class="order-detail"><strong>${isDelivery ? '快递' : '任务'}:</strong> ${orderTitle}</div>
+                <div class="order-detail"><strong>对方:</strong> ${otherUserName}</div>
+                <div class="order-detail"><strong>酬劳:</strong> ${order.reward}元</div>
+            </div>
+            <div class="order-actions">
+                ${(order.status === 'taken' || order.status === 'processing' || order.status === 'delivered') ? 
+                `<button class="action-btn btn-chat" onclick="openChat('${order.id}', '${orderType}')" style="position: relative;">
+                    进入聊天${unreadCount > 0 ? `<span class="chat-btn-badge">${unreadCount > 99 ? '99+' : unreadCount}</span>` : ''}
+                 </button>` : ''}
+            </div>
+        </div>
+    `;
+}
 
         // 自动刷新页面数据
         async function refreshAllPages() {
