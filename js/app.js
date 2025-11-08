@@ -2695,43 +2695,50 @@ async function validateTakerInfo(orderType) {
 
         // 取消接单
         async function cancelTakeOrder(orderId, orderType) {
-            if (!confirm('确定要取消接单吗？')) return;
+            if (!confirm('确定要取消接单吗？取消后订单将重新变为待接单状态。')) return;
             
             // 获取触发事件的按钮
             const cancelButton = event && event.target ? event.target : null;
             if (cancelButton) setButtonLoading(cancelButton, '取消中...');
             
             try {
-                if (orderType === 'delivery') {
-                    await updateOrder(orderId, {
-                        status: 'pending',
-                        taken_by: null,
-                        taker_name: null,
-                        taker_contact: null,
-                        taker_contact_type: null
-                    });
-                } else {
-                    await updateErrandOrder(orderId, {
-                        status: 'pending',
-                        taken_by: null,
-                        taker_name: null,
-                        taker_contact: null,
-                        taker_contact_type: null
-                    });
+                // 调用数据库函数取消接单
+                const { data, error } = await supabase.rpc('cancel_take_order', {
+                    order_id_in: orderId,
+                    user_id_in: currentUser.id,
+                    order_type_in: orderType
+                });
+                
+                if (error) throw error;
+                
+                // 根据返回结果处理
+                switch(data) {
+                    case 'SUCCESS':
+                        showSuccessModal('取消接单成功', '订单已恢复为待接单状态。');
+                        break;
+                    case 'ORDER_NOT_FOUND':
+                        alert('订单不存在！');
+                        break;
+                    case 'NO_PERMISSION':
+                        alert('您没有权限取消此接单！');
+                        break;
+                    case 'WRONG_STATUS':
+                        alert('当前订单状态不能取消接单！');
+                        break;
+                    default:
+                        alert('操作失败，请重试！');
                 }
                 
-                alert('取消接单成功！');
-                if (orderType === 'delivery') {
-                    renderDeliveryOrders();
-                } else {
-                    renderErrandOrders();
-                }
-
+                // 刷新页面数据
                 await refreshAllPages();
+                closeOrderDetail(); // 关闭详情模态框
+                if (currentFilters.status === 'all') {
+                    showMyOrders();
+                }
 
             } catch (error) {
                 alert('取消接单失败，请重试！');
-                console.error(error);
+                console.error('取消接单错误:', error);
             } finally {
                 // 恢复按钮状态
                 if (cancelButton) resetButton(cancelButton);
@@ -5653,9 +5660,18 @@ function closeSuccessModal() {
                 </div>
             ` : ''}
             
-            <div class="order-actions" style="margin-top: 20px; display: flex; gap: 10px;">
+            <div class="order-actions" style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
                 ${(order.status === 'taken' || order.status === 'processing' || order.status === 'delivered') && (order.created_by === currentUser.id || order.taken_by === currentUser.id) ? 
                     `<button class="action-btn btn-chat" onclick="openChat('${order.id}', '${orderType}')" style="flex: 1;">联系对方</button>` : ''}
+                    
+                <!-- 取消接单按钮 - 仅在订单状态为taken且当前用户是接单者或发布者时显示 -->
+                ${order.status === 'taken' && (order.taken_by === currentUser.id || order.created_by === currentUser.id) ? 
+                    `<button class="action-btn btn-cancel" onclick="cancelTakeOrder('${order.id}', '${orderType}')" style="flex: 1;">取消接单</button>` : ''}
+                    
+                <!-- 修改订单按钮 - 仅在订单状态为pending或taken且当前用户是发布者时显示 -->
+                ${(order.status === 'pending' || order.status === 'taken') && order.created_by === currentUser.id ? 
+                    `<button class="action-btn btn-modify" onclick="openModifyOrderModal('${order.id}', '${orderType}')" style="flex: 1;">修改订单</button>` : ''}
+                    
                 ${order.status === 'processing' && order.taken_by === currentUser.id ? 
                     `<button class="action-btn btn-delivered" onclick="markAsDelivered('${order.id}', '${orderType}')" style="flex: 1;">已送达</button>` : ''}
                 ${order.status === 'delivered' && order.created_by === currentUser.id ? 
@@ -5679,6 +5695,214 @@ function closeSuccessModal() {
             const detailModal = document.querySelector('.order-detail-modal');
             if (detailModal) {
                 detailModal.remove();
+            }
+        }
+
+        // 打开修改订单模态框
+        async function openModifyOrderModal(orderId, orderType) {
+            try {
+                let order;
+                if (orderType === 'delivery') {
+                    const orders = await getDeliveryOrders();
+                    order = orders.find(o => o.id === orderId);
+                } else {
+                    const orders = await getErrandOrders();
+                    order = orders.find(o => o.id === orderId);
+                }
+                
+                if (!order) {
+                    alert('订单不存在！');
+                    return;
+                }
+                
+                // 关闭当前订单详情模态框
+                closeOrderDetail();
+                
+                // 创建修改订单模态框
+                const modifyModal = document.createElement('div');
+                modifyModal.className = 'modify-order-modal';
+                
+                // 判断订单类型
+                const isDelivery = orderType === 'delivery';
+                const orderTitle = isDelivery ? '修改代取快递订单' : '修改跑腿任务订单';
+                
+                modifyModal.innerHTML = `
+                    <div class="modify-order-content">
+                        <div class="modify-order-header">
+                            <div class="modify-order-title">${orderTitle}</div>
+                            <button class="modify-order-close" onclick="closeModifyOrder()" style="
+                                background: none;
+                                border: none;
+                                font-size: 24px;
+                                cursor: pointer;
+                                color: #666;
+                                width: 30px;
+                                height: 30px;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                border-radius: 50%;
+                                transition: all 0.2s;
+                            " onmouseover="this.style.backgroundColor='#f0f0f0'" onmouseout="this.style.backgroundColor='transparent'">×</button>
+                        </div>
+                        
+                        <div class="modify-order-body">
+                            <form id="modify-order-form" onsubmit="event.preventDefault(); saveModifiedOrder('${orderId}', '${orderType}');">
+                                ${isDelivery ? `
+                                    <div class="form-group">
+                                        <label>取件地址 <span class="required">*</span></label>
+                                        <input type="text" id="modify-pickup-address" name="pickup_address" value="${order.pickup_address || ''}" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>送达地址 <span class="required">*</span></label>
+                                        <input type="text" id="modify-delivery-address" name="delivery_address" value="${order.delivery_address || ''}" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>期望送达时间 <span class="required">*</span></label>
+                                        <input type="datetime-local" id="modify-delivery-time" name="delivery_time" value="${order.delivery_time ? new Date(order.delivery_time).toISOString().slice(0, 16) : ''}" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>取件码</label>
+                                        <input type="text" id="modify-pickup-code" name="pickup_code" value="${order.pickup_code || ''}">
+                                    </div>
+                                ` : `
+                                    <div class="form-group">
+                                        <label>任务标题 <span class="required">*</span></label>
+                                        <input type="text" id="modify-title" name="title" value="${order.title || ''}" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>任务描述 <span class="required">*</span></label>
+                                        <textarea id="modify-description" name="description" rows="3" required>${order.description || ''}</textarea>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>取物地点 <span class="required">*</span></label>
+                                        <input type="text" id="modify-pickup-location" name="pickup_location" value="${order.pickup_location || ''}" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>送达地点 <span class="required">*</span></label>
+                                        <input type="text" id="modify-delivery-location" name="delivery_location" value="${order.delivery_location || ''}" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>期望完成时间 <span class="required">*</span></label>
+                                        <input type="datetime-local" id="modify-deadline" name="deadline" value="${order.deadline ? new Date(order.deadline).toISOString().slice(0, 16) : ''}" required>
+                                    </div>
+                                `}
+                                
+                                <div class="form-group">
+                                    <label>酬劳 (元) <span class="required">*</span></label>
+                                    <input type="number" id="modify-reward" name="reward" value="${order.reward || ''}" min="0" step="0.01" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>联系人姓名 <span class="required">*</span></label>
+                                    <input type="text" id="modify-contact-name" name="contact_name" value="${order.contact_name || ''}" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>联系方式 <span class="required">*</span></label>
+                                    <input type="text" id="modify-contact-info" name="contact_info" value="${order.contact_info || ''}" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>联系方式类型</label>
+                                    <select id="modify-contact-type" name="contact_type">
+                                        <option value="phone" ${order.contact_type === 'phone' ? 'selected' : ''}>电话</option>
+                                        <option value="wechat" ${order.contact_type === 'wechat' ? 'selected' : ''}>微信</option>
+                                        <option value="qq" ${order.contact_type === 'qq' ? 'selected' : ''}>QQ</option>
+                                        <option value="other" ${order.contact_type === 'other' ? 'selected' : ''}>其他</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>备注信息</label>
+                                    <textarea id="modify-notes" name="notes" rows="3">${order.notes || ''}</textarea>
+                                </div>
+                                
+                                <div class="form-actions" style="margin-top: 20px; display: flex; gap: 10px;">
+                                    <button type="button" class="btn btn-secondary" onclick="closeModifyOrder()">取消</button>
+                                    <button type="submit" class="btn btn-primary">保存修改</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                `;
+                
+                // 添加到页面
+                document.body.appendChild(modifyModal);
+                
+            } catch (error) {
+                console.error('打开修改订单模态框失败:', error);
+                alert('打开修改页面失败！');
+            }
+        }
+
+        // 保存修改的订单
+        async function saveModifiedOrder(orderId, orderType) {
+            try {
+                // 获取表单数据
+                const form = document.getElementById('modify-order-form');
+                const formData = new FormData(form);
+                
+                // 调用数据库函数修改订单
+                const { data, error } = await supabase.rpc('modify_order', {
+                    order_id_in: orderId,
+                    user_id_in: currentUser.id,
+                    order_type_in: orderType,
+                    title_in: formData.get('title') || null,
+                    description_in: formData.get('description') || null,
+                    pickup_location_in: formData.get('pickup_location') || null,
+                    delivery_location_in: formData.get('delivery_location') || null,
+                    pickup_address_in: formData.get('pickup_address') || null,
+                    delivery_address_in: formData.get('delivery_address') || null,
+                    pickup_code_in: formData.get('pickup_code') || null,
+                    delivery_time_in: formData.get('delivery_time') ? new Date(formData.get('delivery_time')).toISOString() : null,
+                    deadline_in: formData.get('deadline') ? new Date(formData.get('deadline')).toISOString() : null,
+                    reward_in: formData.get('reward') ? parseFloat(formData.get('reward')) : null,
+                    contact_name_in: formData.get('contact_name') || null,
+                    contact_info_in: formData.get('contact_info') || null,
+                    contact_type_in: formData.get('contact_type') || null,
+                    notes_in: formData.get('notes') || null
+                });
+                
+                if (error) throw error;
+                
+                // 根据返回结果处理
+                switch(data) {
+                    case 'SUCCESS':
+                        showSuccessModal('修改成功', '订单信息已更新。');
+                        break;
+                    case 'SUCCESS_WITH_NOTIFICATION':
+                        showSuccessModal('修改成功', '订单信息已更新，并已通知接单者。');
+                        break;
+                    case 'ORDER_NOT_FOUND':
+                        alert('订单不存在！');
+                        break;
+                    case 'NO_PERMISSION':
+                        alert('您没有权限修改此订单！');
+                        break;
+                    case 'WRONG_STATUS':
+                        alert('当前订单状态不能修改！');
+                        break;
+                    default:
+                        alert('修改失败，请重试！');
+                }
+                
+                // 刷新页面数据
+                await refreshAllPages();
+                closeModifyOrder(); // 关闭修改模态框
+                viewOrderDetails(orderId, orderType); // 重新打开订单详情页
+                
+            } catch (error) {
+                alert('修改订单失败，请重试！');
+                console.error('修改订单错误:', error);
+            }
+        }
+
+        // 关闭修改订单模态框
+        function closeModifyOrder() {
+            const modifyModal = document.querySelector('.modify-order-modal');
+            if (modifyModal) {
+                modifyModal.remove();
             }
         }
 
