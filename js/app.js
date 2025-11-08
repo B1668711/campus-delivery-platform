@@ -2483,7 +2483,7 @@ async function takeOrder(orderId) {
             taker_name_in: takerName,
             taker_contact_in: takerContactInfo,
             taker_contact_type_in: contactType,
-            order_type_in: 'delivery' // 指定订单类型
+            order_type_in: 'delivery'
         });
 
         if (error) throw error;
@@ -2557,7 +2557,7 @@ async function takeErrandOrder(orderId) {
             taker_name_in: takerName,
             taker_contact_in: takerContactInfo,
             taker_contact_type_in: contactType,
-            order_type_in: 'errand' // 指定订单类型为 'errand'
+            order_type_in: 'errand'
         });
 
         if (error) throw error;
