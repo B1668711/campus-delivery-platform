@@ -5843,7 +5843,7 @@ function closeSuccessModal() {
                 };
                 
                 // 调用数据库函数修改订单
-                const { data, error } = await supabase.rpc('modify_order', params);
+                const { data, error } = await supabase.rpc('update_order_info', params);
                 
                 if (error) throw error;
                 
