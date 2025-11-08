@@ -5843,26 +5843,39 @@ function closeSuccessModal() {
                 const form = document.getElementById('modify-order-form');
                 const formData = new FormData(form);
                 
-                // 调用数据库函数修改订单
-                const { data, error } = await supabase.rpc('modify_order', {
+                // 准备参数，根据订单类型只传递相关字段
+                const params = {
                     order_id_in: orderId,
                     user_id_in: currentUser.id,
-                    order_type_in: orderType,
-                    title_in: formData.get('title') || null,
-                    description_in: formData.get('description') || null,
-                    pickup_location_in: formData.get('pickup_location') || null,
-                    delivery_location_in: formData.get('delivery_location') || null,
-                    pickup_address_in: formData.get('pickup_address') || null,
-                    delivery_address_in: formData.get('delivery_address') || null,
-                    pickup_code_in: formData.get('pickup_code') || null,
-                    delivery_time_in: formData.get('delivery_time') ? new Date(formData.get('delivery_time')).toISOString() : null,
-                    deadline_in: formData.get('deadline') ? new Date(formData.get('deadline')).toISOString() : null,
-                    reward_in: formData.get('reward') ? parseFloat(formData.get('reward')) : null,
-                    contact_name_in: formData.get('contact_name') || null,
-                    contact_info_in: formData.get('contact_info') || null,
-                    contact_type_in: formData.get('contact_type') || null,
-                    notes_in: formData.get('notes') || null
-                });
+                    order_type_in: orderType
+                };
+                
+                // 只传递相关字段的参数
+                if (orderType === 'delivery') {
+                    params.description_in = formData.get('description') || null;
+                    params.pickup_location_in = formData.get('pickup_location') || null;
+                    params.delivery_location_in = formData.get('delivery_location') || null;
+                    params.pickup_address_in = formData.get('pickup_address') || null;
+                    params.delivery_address_in = formData.get('delivery_address') || null;
+                    params.pickup_code_in = formData.get('pickup_code') || null;
+                    params.delivery_time_in = formData.get('delivery_time') ? new Date(formData.get('delivery_time')).toISOString() : null;
+                } else {
+                    params.title_in = formData.get('title') || null;
+                    params.description_in = formData.get('description') || null;
+                    params.pickup_location_in = formData.get('pickup_location') || null;
+                    params.delivery_location_in = formData.get('delivery_location') || null;
+                }
+                
+                // 通用字段
+                params.deadline_in = formData.get('deadline') ? new Date(formData.get('deadline')).toISOString() : null;
+                params.reward_in = formData.get('reward') ? parseFloat(formData.get('reward')) : null;
+                params.contact_name_in = formData.get('contact_name') || null;
+                params.contact_info_in = formData.get('contact_info') || null;
+                params.contact_type_in = formData.get('contact_type') || null;
+                params.notes_in = formData.get('notes') || null;
+                
+                // 调用数据库函数修改订单
+                const { data, error } = await supabase.rpc('modify_order', params);
                 
                 if (error) throw error;
                 
