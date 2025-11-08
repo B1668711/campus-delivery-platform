@@ -1,5 +1,8 @@
--- 更新修改订单函数，根据实际表结构
-CREATE OR REPLACE FUNCTION modify_order(
+-- 首先删除现有的modify_order函数（如果存在）
+DROP FUNCTION IF EXISTS modify_order;
+
+-- 创建新的修改订单函数，根据实际表结构
+CREATE FUNCTION modify_order(
     order_id_in text,
     user_id_in text,
     order_type_in text,
