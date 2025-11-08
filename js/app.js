@@ -219,6 +219,7 @@
         let chatInterval = null;
         let unreadUpdateInterval = null;
         let notificationPermission = false;
+        let currentTakeOrderPage = null; // 当前领取订单页面类型：'delivery' 或 'errand'
 
         // ==================== 联系信息验证函数 ====================
 function validateContactInfo(contactType, contactInfo) {
@@ -412,6 +413,7 @@ async function syncUserFromDatabase(deviceId) {
                 autoFillContact: userData.auto_fill_contact,
                 defaultContactType: userData.default_contact_type,
                 defaultContactInfo: userData.default_contact_info,
+                defaultContactName: userData.default_contact_name || '', // 添加默认联系人姓名
                 defaultAddress: userData.default_address,
                 createdAt: userData.created_at
             };
@@ -467,6 +469,7 @@ async function createNewUserInDatabase(deviceId) {
                 autoFillContact: newUser.auto_fill_contact !== undefined ? newUser.auto_fill_contact : true,
                 defaultContactType: newUser.default_contact_type || 'wechat',
                 defaultContactInfo: newUser.default_contact_info || '',
+                defaultContactName: newUser.default_contact_name || '', // 添加默认联系人姓名
                 defaultAddress: newUser.default_address || '',
                 createdAt: newUser.created_at
             };
@@ -496,6 +499,7 @@ function createNewUserLocal(deviceId) {
         autoFillContact: true,
         defaultContactType: 'wechat',
         defaultContactInfo: '',
+        defaultContactName: '', // 添加默认联系人姓名
         defaultAddress: '',
         createdAt: new Date().toISOString(),
         virtualId: getVirtualUserId(userId) // 添加虚拟ID
@@ -516,6 +520,7 @@ function createNewUser(deviceId) {
         autoFillContact: true,
         defaultContactType: 'wechat',
         defaultContactInfo: '',
+        defaultContactName: '', // 添加默认联系人姓名
         defaultAddress: '',
         createdAt: new Date().toISOString()
     };
@@ -542,8 +547,10 @@ async function saveUser(user) {
 }
 
 // 保存用户数据到数据库
+// 修改 saveUserToDatabase 函数
 async function saveUserToDatabase(user) {
     try {
+        // 构建基础用户数据（只包含必填字段）
         const userData = {
             device_id: user.deviceId,
             name: user.name,
@@ -553,14 +560,51 @@ async function saveUserToDatabase(user) {
             default_contact_type: user.defaultContactType,
             default_contact_info: user.defaultContactInfo,
             default_address: user.defaultAddress,
-            // 新增：微信绑定信息（若表无该字段，后端会返回错误，前端忽略即可）
-            wechat_bound: user.wechatBound === true,
-            wechat_account: user.wechatAccount || null,
-            alipay_bound: user.alipayBound === true,
-            alipay_account: user.alipayAccount || null,
             updated_at: new Date().toISOString()
         };
-        
+
+        // 尝试添加可选字段（如果表中有这些列）
+        // 使用 try-catch 包装每个可选字段的添加
+        try {
+            if (user.defaultContactName !== undefined) {
+                userData.default_contact_name = user.defaultContactName;
+            }
+        } catch (e) {
+            console.warn('default_contact_name 列不存在，跳过该字段');
+        }
+
+        try {
+            if (user.wechatBound !== undefined) {
+                userData.wechat_bound = user.wechatBound === true;
+            }
+        } catch (e) {
+            console.warn('wechat_bound 列不存在，跳过该字段');
+        }
+
+        try {
+            if (user.wechatAccount) {
+                userData.wechat_account = user.wechatAccount;
+            }
+        } catch (e) {
+            console.warn('wechat_account 列不存在，跳过该字段');
+        }
+
+        try {
+            if (user.alipayBound !== undefined) {
+                userData.alipay_bound = user.alipayBound === true;
+            }
+        } catch (e) {
+            console.warn('alipay_bound 列不存在，跳过该字段');
+        }
+
+        try {
+            if (user.alipayAccount) {
+                userData.alipay_account = user.alipayAccount;
+            }
+        } catch (e) {
+            console.warn('alipay_account 列不存在，跳过该字段');
+        }
+
         const { data, error } = await supabase
             .from('users')
             .upsert(userData, { 
@@ -570,6 +614,35 @@ async function saveUserToDatabase(user) {
             .select();
         
         if (error) {
+            // 如果是列不存在的错误，降级到基本字段保存
+            if (error.code === '42703' || error.message.includes('column')) {
+                console.warn('数据库表结构不完整，使用基本字段保存');
+                
+                // 只保存基本字段
+                const basicUserData = {
+                    device_id: user.deviceId,
+                    name: user.name,
+                    contact_method: user.contactMethod,
+                    contact_info: user.contactInfo,
+                    updated_at: new Date().toISOString()
+                };
+                
+                const { data: basicData, error: basicError } = await supabase
+                    .from('users')
+                    .upsert(basicUserData, { 
+                        onConflict: 'device_id',
+                        ignoreDuplicates: false 
+                    })
+                    .select();
+                
+                if (basicError) {
+                    console.error('基本用户数据保存失败:', basicError);
+                } else {
+                    console.log('基本用户数据已保存到数据库');
+                }
+                return;
+            }
+            
             console.error('保存用户数据到数据库失败:', error);
             return;
         }
@@ -603,6 +676,7 @@ function updateUserDisplay() {
     
     // 更新默认信息设置
     document.getElementById('auto-fill-toggle').checked = currentUser.autoFillContact;
+    document.getElementById('default-contact-name').value = currentUser.defaultContactName || '';
     document.getElementById('default-contact-info').value = currentUser.defaultContactInfo || '';
     document.getElementById('default-address').value = currentUser.defaultAddress || '';
     
@@ -678,6 +752,26 @@ async function bindWeChatAccount() {
     }
 }
 
+// 微信绑定显示刷新
+function updateWeChatBindDisplay() {
+    // 检查所有需要的元素是否存在
+    const statusEl = document.getElementById('wechat-bind-status');
+    const accountEl = document.getElementById('wechat-account-display');
+    const bindBtn = document.getElementById('wechat-bind-btn');
+    const unbindBtn = document.getElementById('wechat-unbind-btn');
+    
+    // 如果任何一个元素不存在，直接返回
+    if (!statusEl || !accountEl || !bindBtn || !unbindBtn) return;
+
+    const isBound = !!(currentUser && currentUser.wechatBound);
+    const account = currentUser && currentUser.wechatAccount ? currentUser.wechatAccount : '';
+
+    statusEl.textContent = isBound ? '已绑定' : '未绑定';
+    accountEl.textContent = isBound ? account : '-';
+    bindBtn.style.display = isBound ? 'none' : '';
+    unbindBtn.style.display = isBound ? '' : 'none';
+}
+
 // 解除绑定
 async function unbindWeChatAccount() {
     try {
@@ -718,10 +812,13 @@ async function unbindWeChatConfirmed() {
 
 // 支付宝绑定显示刷新
 function updateAlipayBindDisplay() {
+    // 检查所有需要的元素是否存在
     const statusEl = document.getElementById('alipay-bind-status');
     const accountEl = document.getElementById('alipay-account-display');
     const bindBtn = document.getElementById('alipay-bind-btn');
     const unbindBtn = document.getElementById('alipay-unbind-btn');
+    
+    // 如果任何一个元素不存在，直接返回
     if (!statusEl || !accountEl || !bindBtn || !unbindBtn) return;
 
     const isBound = !!(currentUser && currentUser.alipayBound);
@@ -800,6 +897,7 @@ async function unbindAlipayConfirmed() {
         // 保存默认信息 - 更新版本
 async function saveDefaultInfo() {
     const autoFill = document.getElementById('auto-fill-toggle').checked;
+    const contactName = document.getElementById('default-contact-name').value.trim();
     const contactInfo = document.getElementById('default-contact-info').value.trim();
     const address = document.getElementById('default-address').value;
     
@@ -819,6 +917,8 @@ async function saveDefaultInfo() {
     }
     
     await saveUser({
+        // 用户名和默认联系人姓名分开保存
+        defaultContactName: contactName, // 仅保存为默认联系人姓名
         autoFillContact: autoFill,
         defaultContactType: defaultContactType,
         defaultContactInfo: contactInfo,
@@ -848,54 +948,238 @@ async function saveDefaultInfo() {
     // alert('默认信息已保存！');
 }
 
-        // 自动填充联系信息
-function autoFillContactInfo() {
-    if (!currentUser.autoFillContact) return;
+// 更新用户显示
+function updateUserDisplay() {
+    if (!currentUser) return;
     
-    // 检查默认联系信息是否有效
-    const isDefaultContactValid = validateDefaultContactInfo();
-    if (!isDefaultContactValid) {
-        console.log('默认联系信息不符合规范，跳过自动填充');
-        
-        // 显示提醒弹窗
-        showDefaultContactWarning();
-        return;
-    }
+    // 生成虚拟用户ID
+    const virtualUserId = getVirtualUserId(currentUser.id);
     
-    // 填充代取快递发布页
-    if (currentUser.defaultContactInfo) {
-        document.getElementById('contact-info').value = currentUser.defaultContactInfo;
-        document.getElementById('errand-contact-info').value = currentUser.defaultContactInfo;
-    }
+    // 安全地更新元素，检查元素是否存在
+    const userDisplayName = document.getElementById('user-display-name');
+    if (userDisplayName) userDisplayName.textContent = currentUser.name;
     
-    // 填充代取快递领取页
-    document.getElementById('taker-contact-info').value = currentUser.defaultContactInfo || '';
+    const userDisplayId = document.getElementById('user-display-id');
+    if (userDisplayId) userDisplayId.textContent = 'ID: ' + virtualUserId;
     
-    // 填充跑腿领取页
-    document.getElementById('errand-taker-contact-info').value = currentUser.defaultContactInfo || '';
+    const userAvatar = document.getElementById('user-avatar');
+    if (userAvatar) userAvatar.textContent = currentUser.name.charAt(0);
     
-    // 填充姓名
-    if (currentUser.name) {
-        document.getElementById('contact-name').value = currentUser.name;
-        document.getElementById('errand-contact-name').value = currentUser.name;
-        document.getElementById('taker-name').value = currentUser.name;
-        document.getElementById('errand-taker-name').value = currentUser.name;
-    }
+    // 更新设置页面用户信息
+    const settingsUserName = document.getElementById('settings-user-name');
+    if (settingsUserName) settingsUserName.textContent = currentUser.name;
     
-    // 填充地址
-    if (currentUser.defaultAddress) {
-        document.getElementById('delivery-address').value = currentUser.defaultAddress;
-        document.getElementById('errand-delivery').value = currentUser.defaultAddress;
-    }
+    const settingsUserId = document.getElementById('settings-user-id');
+    if (settingsUserId) settingsUserId.textContent = 'ID: ' + virtualUserId;
     
-    // 填充联系方式类型
-    const contactTypeBtns = document.querySelectorAll('.contact-type-btn');
-    contactTypeBtns.forEach(btn => {
+    const settingsUserAvatar = document.getElementById('settings-user-avatar');
+    if (settingsUserAvatar) settingsUserAvatar.textContent = currentUser.name.charAt(0);
+    
+    // 更新设置页面详细信息
+    const displayUserName = document.getElementById('display-user-name');
+    if (displayUserName) displayUserName.textContent = currentUser.name;
+    
+    const displayUserId = document.getElementById('display-user-id');
+    if (displayUserId) displayUserId.textContent = virtualUserId; // 使用虚拟ID
+    
+    // 更新默认信息设置
+    const autoFillToggle = document.getElementById('auto-fill-toggle');
+    if (autoFillToggle) autoFillToggle.checked = currentUser.autoFillContact;
+    
+    const defaultContactName = document.getElementById('default-contact-name');
+    if (defaultContactName) defaultContactName.value = currentUser.defaultContactName || '';
+    
+    const defaultContactInfo = document.getElementById('default-contact-info');
+    if (defaultContactInfo) defaultContactInfo.value = currentUser.defaultContactInfo || '';
+    
+    const defaultAddress = document.getElementById('default-address');
+    if (defaultAddress) defaultAddress.value = currentUser.defaultAddress || '';
+    
+    // 更新设置页面的默认联系方式类型
+    const settingsContactBtns = document.querySelectorAll('#settings-page .contact-type-btn');
+    settingsContactBtns.forEach(btn => {
         btn.classList.remove('active');
         if (btn.dataset.type === currentUser.defaultContactType) {
             btn.classList.add('active');
         }
     });
+
+    // 更新微信绑定显示
+    updateWeChatBindDisplay();
+    // 更新支付宝绑定显示
+    updateAlipayBindDisplay();
+}
+
+        // 自动填充联系信息
+function autoFillContactInfo() {
+    console.log('=== 自动填充调试信息 ===');
+    console.log('currentUser:', currentUser);
+    console.log('autoFillContact:', currentUser?.autoFillContact);
+    console.log('defaultContactInfo:', currentUser?.defaultContactInfo);
+    console.log('defaultContactType:', currentUser?.defaultContactType);
+    
+    if (!currentUser) {
+        console.log('❌ 自动填充失败：用户未登录');
+        return false;
+    }
+    
+    if (!currentUser.autoFillContact) {
+        console.log('❌ 自动填充失败：自动填充功能未开启');
+        return false;
+    }
+    
+    if (!currentUser.defaultContactInfo) {
+        console.log('❌ 自动填充失败：默认联系信息为空');
+        return false;
+    }
+    
+    console.log('尝试自动填充联系信息', currentUser);
+    
+    try {
+        let filledCount = 0;
+        
+        // 检查默认联系信息是否有效
+        const isDefaultContactValid = validateDefaultContactInfo();
+        if (!isDefaultContactValid) {
+            console.log('默认联系信息不符合规范，跳过自动填充');
+            // 不再显示警告，而是直接尝试填充
+            // showDefaultContactWarning();
+            // return false;
+        }
+        
+        // 填充代取快递发布页
+        if (currentUser.defaultContactInfo) {
+            const contactInfoInput = document.getElementById('contact-info');
+            const errandContactInfoInput = document.getElementById('errand-contact-info');
+            
+            if (contactInfoInput) {
+                contactInfoInput.value = currentUser.defaultContactInfo;
+                console.log('已填充代取快递联系信息');
+                filledCount++;
+            }
+            
+            if (errandContactInfoInput) {
+                errandContactInfoInput.value = currentUser.defaultContactInfo;
+                console.log('已填充跑腿任务联系信息');
+                filledCount++;
+            }
+        }
+        
+        // 填充代取快递领取页
+        const takerContactInfoInput = document.getElementById('taker-contact-info');
+        if (takerContactInfoInput) {
+            takerContactInfoInput.value = currentUser.defaultContactInfo || '';
+            console.log('已填充代取快递领取页联系信息');
+            filledCount++;
+        }
+        
+        // 填充跑腿领取页
+        const errandTakerContactInfoInput = document.getElementById('errand-taker-contact-info');
+        if (errandTakerContactInfoInput) {
+            errandTakerContactInfoInput.value = currentUser.defaultContactInfo || '';
+            console.log('已填充跑腿领取页联系信息');
+            filledCount++;
+        }
+        
+        // 填充姓名
+        if (currentUser.defaultContactName) {
+            // 如果有默认联系人姓名，优先使用
+            const contactName = document.getElementById('contact-name');
+            const errandContactName = document.getElementById('errand-contact-name');
+            const takerName = document.getElementById('taker-name');
+            const errandTakerName = document.getElementById('errand-taker-name');
+            
+            if (contactName) {
+                contactName.value = currentUser.defaultContactName;
+                filledCount++;
+                console.log('已使用默认联系人姓名填充 contact-name');
+            }
+            
+            if (errandContactName) {
+                errandContactName.value = currentUser.defaultContactName;
+                filledCount++;
+                console.log('已使用默认联系人姓名填充 errand-contact-name');
+            }
+            
+            if (takerName) {
+                takerName.value = currentUser.defaultContactName;
+                filledCount++;
+                console.log('已使用默认联系人姓名填充 taker-name');
+            }
+            
+            if (errandTakerName) {
+                errandTakerName.value = currentUser.defaultContactName;
+                filledCount++;
+                console.log('已使用默认联系人姓名填充 errand-taker-name');
+            }
+            console.log('已使用默认联系人姓名填充');
+        } else if (currentUser.name) {
+            // 否则使用用户名
+            const contactName = document.getElementById('contact-name');
+            const errandContactName = document.getElementById('errand-contact-name');
+            const takerName = document.getElementById('taker-name');
+            const errandTakerName = document.getElementById('errand-taker-name');
+            
+            if (contactName) {
+                contactName.value = currentUser.name;
+                filledCount++;
+                console.log('已使用用户名填充 contact-name');
+            }
+            
+            if (errandContactName) {
+                errandContactName.value = currentUser.name;
+                filledCount++;
+                console.log('已使用用户名填充 errand-contact-name');
+            }
+            
+            if (takerName) {
+                takerName.value = currentUser.name;
+                filledCount++;
+                console.log('已使用用户名填充 taker-name');
+            }
+            
+            if (errandTakerName) {
+                errandTakerName.value = currentUser.name;
+                filledCount++;
+                console.log('已使用用户名填充 errand-taker-name');
+            }
+            console.log('已使用用户名填充');
+        }
+        
+        // 填充地址
+        if (currentUser.defaultAddress) {
+            const deliveryAddress = document.getElementById('delivery-address');
+            const errandDelivery = document.getElementById('errand-delivery');
+            
+            if (deliveryAddress) {
+                deliveryAddress.value = currentUser.defaultAddress;
+                filledCount++;
+                console.log('已填充默认地址到 delivery-address');
+            }
+            
+            if (errandDelivery) {
+                errandDelivery.value = currentUser.defaultAddress;
+                filledCount++;
+                console.log('已填充默认地址到 errand-delivery');
+            }
+            console.log('已填充默认地址');
+        }
+        
+        // 填充联系方式类型
+        const contactTypeBtns = document.querySelectorAll('.contact-type-btn');
+        contactTypeBtns.forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.dataset.type === currentUser.defaultContactType) {
+                btn.classList.add('active');
+            }
+        });
+        console.log('自动填充联系信息完成，共填充了', filledCount, '个字段');
+        return filledCount > 0;
+        
+    } catch (error) {
+        console.error('自动填充过程中发生错误:', error);
+        return false;
+    }
 }
 
 // 显示默认联系信息不符合规范的警告
@@ -1026,17 +1310,42 @@ function initContactTypeSelectors() {
 
         // 获取所有订单（代取快递）
         async function getDeliveryOrders() {
+            console.log('=== getDeliveryOrders 开始执行 ===');
+            
+            // 检查 supabase 客户端是否已初始化
+            if (!supabase) {
+                console.error('Supabase 客户端未初始化');
+                return [];
+            }
+            
             try {
+                console.log('开始从数据库查询代取订单...');
                 const { data, error } = await supabase
                     .from('delivery_orders')
                     .select('*')
                     .order('created_at', { ascending: false });
                 
-                if (error) throw error;
-                return data || [];
+                if (error) {
+                    console.error('Supabase 查询错误:', error);
+                    throw error;
+                }
+                
+                const result = data || [];
+                console.log('从数据库获取到代取订单数量:', result.length);
+                
+                // 检查订单数据的有效性
+                if (result.length > 0) {
+                    console.log('第一个订单样本:', result[0]);
+                }
+                
+                console.log('=== getDeliveryOrders 执行完成 ===');
+                return result;
             } catch (error) {
                 console.error('获取代取订单失败:', error);
-                throw error;
+                console.error('错误详情:', error.message);
+                console.error('=== getDeliveryOrders 执行失败 ===');
+                // 返回空数组而不是抛出错误，以避免整个渲染流程中断
+                return [];
             }
         }
 
@@ -1194,7 +1503,8 @@ async function renderDeliveryOrders() {
         // 1. 显示加载动画
         ordersList.innerHTML = `<div class="loading"><i class="fas fa-spinner fa-spin"></i> 加载中...</div>`;
         
-        console.time('renderDeliveryOrders');
+        const timerName = 'renderDeliveryOrders_' + Date.now();
+        console.time(timerName);
         
         // 2. 获取所有快递订单
         const orders = await getCachedDeliveryOrders();
@@ -1221,7 +1531,7 @@ async function renderDeliveryOrders() {
         // 5. 使用简单的并行查询获取未读消息数
         const unreadCounts = await getAllUnreadMessageCountsSimple('delivery');
         
-        console.timeEnd('renderDeliveryOrders');
+        console.timeEnd(timerName);
         
         // 6. 清空列表，准备渲染最终结果
         ordersList.innerHTML = '';
@@ -1419,11 +1729,16 @@ async function renderErrandOrders() {
     try {
         ordersList.innerHTML = `<div class="loading"><i class="fas fa-spinner fa-spin"></i> 加载中...</div>`;
         
+        const timerName = 'renderErrandOrders_' + Date.now();
+        console.time(timerName);
+        
         // 使用批量查询
         const [orders, unreadCounts] = await Promise.all([
             getCachedErrandOrders(),
             getAllUnreadMessageCounts('errand')
         ]);
+        
+        console.timeEnd(timerName);
         
         // 筛选当前用户的订单
         const myOrders = orders.filter(order => 
@@ -1597,26 +1912,141 @@ async function renderErrandOrders() {
 
         // 渲染可接取的代取订单
         async function renderAvailableOrders() {
+            console.log('=== renderAvailableOrders 开始执行 ===');
+            
+            // === 新增代码开始 ===
+            // 添加用户状态检查
+            if (!currentUser) {
+                console.log('用户未初始化，等待初始化...');
+                const ordersList = document.getElementById('available-orders-list');
+                if (ordersList) {
+                    ordersList.innerHTML = `
+                        <div class="loading">
+                            <i class="fas fa-spinner fa-spin"></i> 初始化用户信息...
+                        </div>
+                    `;
+                }
+                
+                // 等待用户初始化
+                await new Promise(resolve => {
+                    const checkUser = setInterval(() => {
+                        if (currentUser) {
+                            clearInterval(checkUser);
+                            resolve();
+                        }
+                    }, 100);
+                    
+                    // 10秒超时
+                    setTimeout(() => {
+                        clearInterval(checkUser);
+                        resolve();
+                    }, 10000);
+                });
+            }
+            // === 新增代码结束 ===
+            
+            // 原有的函数逻辑继续执行...
+            console.log('当前用户:', currentUser ? `${currentUser.name} (ID: ${currentUser.id})` : '未登录');
+            
+            // 添加刷新按钮动画
+            const refreshBtn = document.querySelector('.btn-icon');
+            if (refreshBtn) {
+                refreshBtn.classList.add('spinning');
+                setTimeout(() => {
+                    refreshBtn.classList.remove('spinning');
+                }, 1000);
+            }
+            
             const ordersList = document.getElementById('available-orders-list');
             
-            try {
-                // 使用带缓存的函数获取订单数据
-                const orders = await getCachedDeliveryOrders();
-                ordersList.innerHTML = '';
+            if (!ordersList) {
+                console.error('找不到 available-orders-list 元素');
+                return;
+            }
+            
+            console.log('找到订单列表元素，当前内容:', ordersList.innerHTML);
+            
+            // 确保用户已登录
+            console.log('检查用户登录状态:', !!currentUser);
+            if (currentUser) {
+                console.log('已登录用户信息:', {
+                    id: currentUser.id,
+                    name: currentUser.name,
+                    deviceId: currentUser.deviceId
+                });
+            }
+            
+            if (!currentUser) {
+                console.error('用户未登录，无法加载订单');
+                console.log('等待用户初始化完成...');
                 
-                const availableOrders = orders.filter(order => order.status === 'pending');
+                // 尝试等待用户初始化完成
+                setTimeout(() => {
+                    console.log('延迟后检查用户状态:', !!currentUser);
+                    if (currentUser) {
+                        console.log('用户已初始化，重新加载数据');
+                        renderAvailableOrders();
+                    } else {
+                        ordersList.innerHTML = `
+                            <div class="error-message">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <p>请先登录后再查看订单</p>
+                            </div>
+                        `;
+                    }
+                }, 1000);
+                return;
+            }
+            
+            try {
+                // 显示加载状态
+                console.log('显示加载状态...');
+                ordersList.innerHTML = `
+                    <div class="loading">
+                        <i class="fas fa-spinner fa-spin"></i> 加载订单中...
+                    </div>
+                `;
+                
+                // 使用带缓存的函数获取订单数据
+                console.log('开始获取订单数据...');
+                console.log('调用 getCachedDeliveryOrders()...');
+                const orders = await getCachedDeliveryOrders();
+                console.log('获取到代取订单数量:', orders.length);
+                console.log('订单数据类型:', typeof orders);
+                console.log('是否为数组:', Array.isArray(orders));
+                
+                // 清空容器
+                ordersList.innerHTML = '';
+                console.log('已清空订单列表容器');
+                
+                // 过滤出状态为 pending 且不是当前用户发布的订单
+                const availableOrders = orders.filter(order => {
+                    const isPending = order.status === 'pending';
+                    const notMyOrder = order.created_by !== currentUser.id;
+                    console.log(`订单 ${order.id} 检查: 状态=${order.status}, pending=${isPending}, 我的订单=${!notMyOrder}`);
+                    return isPending && notMyOrder;
+                });
+                
+                console.log('可接取的代取订单数量:', availableOrders.length);
+                console.log('可接取订单详情:', availableOrders);
                 
                 if (availableOrders.length === 0) {
+                    console.log('没有可接取的订单，显示空状态');
                     ordersList.innerHTML = `
                         <div class="empty-state">
                             <i class="fas fa-box-open"></i>
-                            <p>暂无待接单的订单</p>
+                            <p>暂无可接取的订单</p>
                         </div>
                     `;
                     return;
                 }
                 
+                // 渲染订单列表
+                console.log('开始渲染订单列表...');
+                let orderCount = 0;
+                
                 availableOrders.forEach(order => {
+                    console.log(`正在渲染订单: ${order.id}`);
                     const orderItem = document.createElement('div');
                     orderItem.className = 'order-item';
                     
@@ -1644,42 +2074,142 @@ async function renderErrandOrders() {
                     };
                     
                     ordersList.appendChild(orderItem);
+                    orderCount++;
+                    console.log(`已渲染 ${orderCount}/${availableOrders.length} 个订单`);
                 });
                 
+                console.log('订单列表渲染完成，共', orderCount, '个订单');
+                
                 // 添加接单按钮事件
-                document.querySelectorAll('.btn-take').forEach(btn => {
+                const takeButtons = document.querySelectorAll('.btn-take');
+                console.log('为', takeButtons.length, '个接单按钮添加事件监听');
+                
+                takeButtons.forEach(btn => {
                     btn.addEventListener('click', function() {
                         const orderId = this.dataset.id;
+                        console.log('用户点击接单，订单ID:', orderId);
                         takeOrder(orderId);
                     });
                 });
                 
+                console.log('=== renderAvailableOrders 执行完成 ===');
+                
             } catch (error) {
-                ordersList.innerHTML = `
-                    <div class="error-message">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <p>加载订单失败: ${error.message}</p>
-                    </div>
-                `;
+                console.error('加载代取订单失败:', error);
+                console.error('错误堆栈:', error.stack);
+                
+                const ordersList = document.getElementById('available-orders-list');
+                if (ordersList) {
+                    ordersList.innerHTML = `
+                        <div class="error-message">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <p>加载订单失败: ${error.message}</p>
+                            <div style="margin-top: 10px;">
+                                <button class="btn btn-primary" onclick="forceRefreshOrders()" style="margin-right: 10px;">
+                                    <i class="fas fa-redo"></i> 重新加载
+                                </button>
+                                <button class="btn btn-secondary" onclick="showPage('main-page')">
+                                    <i class="fas fa-home"></i> 返回首页
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
             }
         }
 
         // 渲染可接取的跑腿任务
         async function renderAvailableErrands() {
+            console.log('=== renderAvailableErrands 开始执行 ===');
+            
+            // === 新增代码开始 ===
+            // 添加用户状态检查
+            if (!currentUser) {
+                console.log('用户未初始化，等待初始化...');
+                const errandsList = document.getElementById('available-errands-list');
+                if (errandsList) {
+                    errandsList.innerHTML = `
+                        <div class="loading">
+                            <i class="fas fa-spinner fa-spin"></i> 初始化用户信息...
+                        </div>
+                    `;
+                }
+                
+                // 等待用户初始化
+                await new Promise(resolve => {
+                    const checkUser = setInterval(() => {
+                        if (currentUser) {
+                            clearInterval(checkUser);
+                            resolve();
+                        }
+                    }, 100);
+                    
+                    // 10秒超时
+                    setTimeout(() => {
+                        clearInterval(checkUser);
+                        resolve();
+                    }, 10000);
+                });
+            }
+            // === 新增代码结束 ===
+            
+            // 原有的函数逻辑继续执行...
+            console.log('当前用户:', currentUser ? `${currentUser.name} (ID: ${currentUser.id})` : '未登录');
+            
+            // 添加刷新按钮动画
+            const refreshBtn = document.querySelector('#available-errands .btn-icon');
+            if (refreshBtn) {
+                refreshBtn.classList.add('spinning');
+                setTimeout(() => {
+                    refreshBtn.classList.remove('spinning');
+                }, 1000);
+            }
+            
             const errandsList = document.getElementById('available-errands-list');
             
+            if (!errandsList) {
+                console.error('找不到 available-errands-list 元素');
+                return;
+            }
+            
+            // 确保用户已登录
+            if (!currentUser) {
+                console.error('用户未登录，无法加载跑腿任务');
+                errandsList.innerHTML = `
+                    <div class="error-message">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <p>请先登录后再查看任务</p>
+                    </div>
+                `;
+                return;
+            }
+            
             try {
+                // 显示加载状态
+                errandsList.innerHTML = `
+                    <div class="loading">
+                        <i class="fas fa-spinner fa-spin"></i> 加载任务中...
+                    </div>
+                `;
+                
                 // 使用带缓存的函数获取订单数据
                 const orders = await getCachedErrandOrders();
+                console.log('获取到跑腿任务数量:', orders.length);
+                
                 errandsList.innerHTML = '';
                 
-                const availableErrands = orders.filter(order => order.status === 'pending');
+                // 过滤出状态为 pending 且不是当前用户发布的订单
+                const availableErrands = orders.filter(order => {
+                    return order.status === 'pending' && order.created_by !== currentUser.id;
+                });
+                
+                console.log('可接取的跑腿任务数量:', availableErrands.length);
                 
                 if (availableErrands.length === 0) {
                     errandsList.innerHTML = `
                         <div class="empty-state">
                             <i class="fas fa-tasks"></i>
-                            <p>暂无待接单的跑腿任务</p>
+                            <p>暂无可接取的跑腿任务</p>
                         </div>
                     `;
                     return;
@@ -1726,10 +2256,12 @@ async function renderErrandOrders() {
                 });
                 
             } catch (error) {
+                console.error('加载跑腿任务失败:', error);
                 errandsList.innerHTML = `
                     <div class="error-message">
                         <i class="fas fa-exclamation-triangle"></i>
                         <p>加载跑腿任务失败: ${error.message}</p>
+                        <button class="btn btn-secondary" onclick="renderAvailableErrands()">重试</button>
                     </div>
                 `;
             }
@@ -1959,10 +2491,20 @@ async function takeOrder(orderId) {
         // 6. 根据后端返回的结果给用户明确的反馈
         if (data === 'SUCCESS') {
             showSuccessModal('接单成功！', '请尽快联系下单人确认细节，订单已移至"我的订单"。');
-            await refreshAllPages();
+            
+            // 清除缓存以确保获取最新数据
+            memoryCache.cache.delete('delivery_orders');
+            
+            // 并行执行所有必要的刷新操作
+            await Promise.all([
+                refreshAllPages(),
+                renderAvailableOrders() // 专门刷新可接取订单列表
+            ]);
+            
             showMyOrders(); // 接单成功后跳转到"我的订单"页
         } else if (data === 'ALREADY_TAKEN') {
             alert('手慢了，订单已被别人抢走啦！');
+            memoryCache.cache.delete('delivery_orders');
             renderAvailableOrders(); // 只刷新当前列表，让用户看到订单消失
         } else {
             alert('发生未知错误，请重试。');
@@ -2023,10 +2565,20 @@ async function takeErrandOrder(orderId) {
         // 6. 根据后端返回的结果给用户明确的反馈
         if (data === 'SUCCESS') {
             showSuccessModal('接单成功！', '请尽快联系发布人确认细节，任务已移至"我的订单"。');
-            await refreshAllPages();
+            
+            // 清除缓存以确保获取最新数据
+            memoryCache.cache.delete('errand_orders');
+            
+            // 并行执行所有必要的刷新操作
+            await Promise.all([
+                refreshAllPages(),
+                renderAvailableErrands() // 专门刷新可接取跑腿任务列表
+            ]);
+            
             showMyOrders(); // 接单成功后跳转到"我的订单"页
         } else if (data === 'ALREADY_TAKEN') {
             alert('手慢了，任务已被别人抢走啦！');
+            memoryCache.cache.delete('errand_orders');
             renderAvailableErrands(); // 只刷新当前列表
         } else {
             alert('发生未知错误，请重试。');
@@ -3079,6 +3631,9 @@ function closeChat() {
 
         // 页面切换函数 - 修复版本
 function showPage(pageId) {
+    console.log('=== showPage 切换到:', pageId, '===');
+    console.log('切换前活动页面:', document.querySelector('.page.active')?.id);
+    
     // 确保页面存在
     const targetPage = document.getElementById(pageId);
     if (!targetPage) {
@@ -3095,6 +3650,7 @@ function showPage(pageId) {
     // 显示目标页面
     targetPage.classList.add('active');
     targetPage.style.display = 'block'; // 确保显示
+    console.log('页面切换完成，当前活动页面:', pageId);
     
     // 更新底部导航激活状态
     document.querySelectorAll('.tab-item').forEach(tab => {
@@ -3103,7 +3659,8 @@ function showPage(pageId) {
     
     // 根据页面ID更新导航状态
     if (pageId === 'main-page') {
-        document.getElementById('navbar-title').textContent = '校园服务平台';
+        const navbarTitle = document.getElementById('navbar-title');
+        if (navbarTitle) navbarTitle.textContent = '校园服务平台';
         document.querySelectorAll('.tab-item')[0].classList.add('active');
         updateMainPageStats();
     } else if (pageId === 'delivery-home-page') {
@@ -3111,78 +3668,195 @@ function showPage(pageId) {
     } else if (pageId === 'errand-home-page') {
         document.querySelectorAll('.tab-item')[2].classList.add('active');
     } else if (pageId === 'chat-home-page') {
-        document.getElementById('navbar-title').textContent = '我的聊天';
+        const navbarTitle = document.getElementById('navbar-title');
+        if (navbarTitle) navbarTitle.textContent = '我的聊天';
         document.querySelectorAll('.tab-item')[3].classList.add('active');
         renderChatHome();
     } else if (pageId === 'settings-page') {
         document.querySelectorAll('.tab-item')[4].classList.add('active');
         updateUserDisplay();
     } else if (pageId === 'my-orders-page') {
-        document.getElementById('navbar-title').textContent = '我的订单';
+        const navbarTitle = document.getElementById('navbar-title');
+        if (navbarTitle) navbarTitle.textContent = '我的订单';
         // 我的订单页面没有对应的底部导航项，保持当前激活状态
     } else if (pageId === 'completed-orders-page') {
-        document.getElementById('navbar-title').textContent = '已完成订单';
+        const navbarTitle = document.getElementById('navbar-title');
+        if (navbarTitle) navbarTitle.textContent = '已完成订单';
         // 已完成订单页面没有对应的底部导航项，保持当前激活状态
     }
     
-// 自动填充联系信息
-if (pageId === 'order-page' || pageId === 'take-order-page' || 
-    pageId === 'errand-order-page' || pageId === 'take-errand-page') {
-    autoFillContactInfo();
-}
-
-// ==================== 新增：领取任务页面自动填充 ====================
-// 在领取任务页面自动填充已保存的接单信息
-if (pageId === 'take-order-page' || pageId === 'take-errand-page') {
-    // 检查是否已经填写过接单信息
-    if (currentUser && currentUser.name && currentUser.contactInfo) {
-        // 给一点延迟确保页面已渲染
-        setTimeout(() => {
-            if (pageId === 'take-order-page') {
-                const nameInput = document.getElementById('taker-name');
-                const contactInput = document.getElementById('taker-contact-info');
-                if (nameInput && contactInput) {
-                    nameInput.value = currentUser.name;
-                    contactInput.value = currentUser.contactInfo;
-                    
-                    // 设置联系方式类型
-                    const contactBtns = document.querySelectorAll('#take-order-page .contact-type-btn');
-                    contactBtns.forEach(btn => {
-                        btn.classList.remove('active');
-                        if (btn.dataset.type === currentUser.defaultContactType) {
-                            btn.classList.add('active');
-                        }
-                    });
-                }
-            } else {
-                const nameInput = document.getElementById('errand-taker-name');
-                const contactInput = document.getElementById('errand-taker-contact-info');
-                if (nameInput && contactInput) {
-                    nameInput.value = currentUser.name;
-                    contactInput.value = currentUser.contactInfo;
-                    
-                    // 设置联系方式类型
-                    const contactBtns = document.querySelectorAll('#take-errand-page .contact-type-btn');
-                    contactBtns.forEach(btn => {
-                        btn.classList.remove('active');
-                        if (btn.dataset.type === currentUser.defaultContactType) {
-                            btn.classList.add('active');
-                        }
-                    });
-                }
-            }
-        }, 100);
+    // 如果切换到订单发布页面，设置默认时间
+    if (pageId === 'order-page' || pageId === 'errand-order-page') {
+        setDefaultTimeValues();
     }
-}
-// ==================== 新增结束 ====================
+    
+    // 自动填充联系信息 - 统一处理
+    if (pageId === 'order-page' || pageId === 'take-order-page' || 
+        pageId === 'errand-order-page' || pageId === 'take-errand-page') {
+        
+        console.log('切换到表单页面，准备自动填充:', pageId);
+        
+        // 使用多种方法确保自动填充成功
+        // 1. 立即尝试填充
+        if (autoFillContactInfo()) {
+            console.log('立即自动填充成功');
+        } else {
+            // 2. 延迟尝试填充
+            setTimeout(() => {
+                console.log('延迟100ms尝试自动填充');
+                if (!autoFillContactInfo()) {
+                    // 3. 再次延迟尝试填充
+                    setTimeout(() => {
+                        console.log('延迟500ms再次尝试自动填充');
+                        autoFillContactInfo();
+                    }, 400);
+                }
+            }, 100);
+            
+            // 4. 使用 MutationObserver 作为备用方案
+            const observer = new MutationObserver((mutations, obs) => {
+                // 检查关键元素是否存在
+                let requiredElementsExist = false;
+                
+                if (pageId === 'order-page') {
+                    requiredElementsExist = !!document.getElementById('contact-name') && 
+                                           !!document.getElementById('contact-info');
+                } else if (pageId === 'errand-order-page') {
+                    requiredElementsExist = !!document.getElementById('errand-contact-name') && 
+                                           !!document.getElementById('errand-contact-info');
+                } else if (pageId === 'take-order-page') {
+                    requiredElementsExist = !!document.getElementById('taker-name') && 
+                                           !!document.getElementById('taker-contact-info');
+                } else if (pageId === 'take-errand-page') {
+                    requiredElementsExist = !!document.getElementById('errand-taker-name') && 
+                                           !!document.getElementById('errand-taker-contact-info');
+                }
+                
+                if (requiredElementsExist) {
+                    console.log('检测到表单元素已加载，执行自动填充');
+                    autoFillContactInfo();
+                    obs.disconnect(); // 停止观察
+                }
+            });
+            
+            // 开始观察
+            observer.observe(targetPage, {
+                childList: true,
+                subtree: true
+            });
+            
+            // 设置超时，防止无限等待
+            setTimeout(() => {
+                console.log('MutationObserver超时，停止观察');
+                observer.disconnect();
+            }, 2000);
+        }
+    }
 
-// 【新增这部分逻辑】
-if (pageId === 'take-order-page') {
-    renderAvailableOrders();
-}
-if (pageId === 'take-errand-page') {
-    renderAvailableErrands();
-}
+    // ==================== 新增：领取任务页面自动填充 ====================
+    // 在领取任务页面自动填充已保存的接单信息
+    if (pageId === 'take-order-page' || pageId === 'take-errand-page') {
+        // 检查是否已经填写过接单信息
+        if (currentUser && currentUser.name && currentUser.contactInfo) {
+            // 给一点延迟确保页面已渲染
+            setTimeout(() => {
+                if (pageId === 'take-order-page') {
+                    const nameInput = document.getElementById('taker-name');
+                    const contactInput = document.getElementById('taker-contact-info');
+                    if (nameInput && contactInput) {
+                        nameInput.value = currentUser.name;
+                        contactInput.value = currentUser.contactInfo;
+                        
+                        // 设置联系方式类型
+                        const contactBtns = document.querySelectorAll('#take-order-page .contact-type-btn');
+                        contactBtns.forEach(btn => {
+                            btn.classList.remove('active');
+                            if (btn.dataset.type === currentUser.defaultContactType) {
+                                btn.classList.add('active');
+                            }
+                        });
+                    }
+                } else {
+                    const nameInput = document.getElementById('errand-taker-name');
+                    const contactInput = document.getElementById('errand-taker-contact-info');
+                    if (nameInput && contactInput) {
+                        nameInput.value = currentUser.name;
+                        contactInput.value = currentUser.contactInfo;
+                        
+                        // 设置联系方式类型
+                        const contactBtns = document.querySelectorAll('#take-errand-page .contact-type-btn');
+                        contactBtns.forEach(btn => {
+                            btn.classList.remove('active');
+                            if (btn.dataset.type === currentUser.defaultContactType) {
+                                btn.classList.add('active');
+                            }
+                        });
+                    }
+                }
+            }, 100);
+        }
+    }
+    // ==================== 新增结束 ====================
+
+    // 在 showPage 函数中找到这部分代码（大约在第 2800 行左右）
+    if (pageId === 'take-order-page') {
+        console.log('切换到领取代取订单页面');
+        // 清除缓存，确保获取最新数据
+        console.log('清除代取订单缓存');
+        memoryCache.cache.delete('delivery_orders');
+        currentTakeOrderPage = 'delivery'; // 标记当前页面类型
+        
+        // 使用新的自动加载函数
+        const loadOrders = async () => {
+            // 确保用户已初始化
+            if (!currentUser) {
+                console.log('等待用户初始化...');
+                setTimeout(loadOrders, 200);
+                return;
+            }
+            
+            console.log('开始加载代取订单数据');
+            try {
+                await renderAvailableOrders();
+                console.log('代取订单加载完成');
+            } catch (error) {
+                console.error('加载订单失败:', error);
+                // 失败后重试
+                setTimeout(loadOrders, 1000);
+            }
+        };
+        
+        // 立即开始加载，不依赖刷新按钮
+        setTimeout(loadOrders, 100);
+        
+    } else if (pageId === 'take-errand-page') {
+        console.log('切换到领取跑腿任务页面');
+        // 清除缓存，确保获取最新数据
+        console.log('清除跑腿任务缓存');
+        memoryCache.cache.delete('errand_orders');
+        currentTakeOrderPage = 'errand'; // 标记当前页面类型
+        
+        const loadErrands = async () => {
+            if (!currentUser) {
+                console.log('等待用户初始化...');
+                setTimeout(loadErrands, 200);
+                return;
+            }
+            
+            console.log('开始加载跑腿任务数据');
+            try {
+                await renderAvailableErrands();
+                console.log('跑腿任务加载完成');
+            } catch (error) {
+                console.error('加载跑腿任务失败:', error);
+                setTimeout(loadErrands, 1000);
+            }
+        };
+        
+        setTimeout(loadErrands, 100);
+    } else {
+        currentTakeOrderPage = null; // 清除标记
+    }
     
     // 每次切换页面都更新未读徽章
     updateTabUnreadBadge();
@@ -3528,15 +4202,123 @@ function showInitializationComplete() {
             return;
         }
         
+        // 对于领取页面的加载元素，不是直接替换为"加载完成"
+        // 而是跳过，因为这些页面会在切换时自动加载内容
+        if (element.closest('#take-order-page') || element.closest('#take-errand-page')) {
+            console.log('跳过领取页面的加载元素:', element.id);
+            return;
+        }
+        
         if (element.innerHTML.includes('fa-spinner')) {
             element.innerHTML = '<i class="fas fa-check-circle"></i> 加载完成';
             element.style.color = '#07c160';
         }
     });
     
+    // 检查当前页面，如果在领取页面，则触发数据加载
+    const takeOrderPage = document.getElementById('take-order-page');
+    const takeErrandPage = document.getElementById('take-errand-page');
+    
+    if (takeOrderPage && takeOrderPage.classList.contains('active')) {
+        console.log('初始化完成，当前在领取代取订单页面，触发数据加载');
+        currentTakeOrderPage = 'delivery';
+        
+        // 立即执行，确保DOM完全加载
+        if (currentUser) {
+            console.log('用户已初始化，立即加载订单');
+            renderAvailableOrders().catch(err => {
+                console.error('初始化后执行 renderAvailableOrders 失败:', err);
+            });
+        } else {
+            console.log('用户未初始化，等待用户初始化完成');
+            // 监听用户初始化完成
+            const checkUserInterval = setInterval(() => {
+                if (currentUser) {
+                    clearInterval(checkUserInterval);
+                    console.log('用户已初始化，开始加载订单');
+                    renderAvailableOrders();
+                }
+            }, 500);
+            
+            // 10秒后停止检查
+            setTimeout(() => {
+                clearInterval(checkUserInterval);
+                console.log('用户初始化检查超时');
+            }, 10000);
+        }
+    } else if (takeErrandPage && takeErrandPage.classList.contains('active')) {
+        console.log('初始化完成，当前在领取跑腿任务页面，触发数据加载');
+        currentTakeOrderPage = 'errand';
+        
+        // 立即执行，确保DOM完全加载
+        if (currentUser) {
+            console.log('用户已初始化，立即加载跑腿任务');
+            renderAvailableErrands().catch(err => {
+                console.error('初始化后执行 renderAvailableErrands 失败:', err);
+            });
+        } else {
+            console.log('用户未初始化，等待用户初始化完成');
+            // 监听用户初始化完成
+            const checkUserInterval = setInterval(() => {
+                if (currentUser) {
+                    clearInterval(checkUserInterval);
+                    console.log('用户已初始化，开始加载跑腿任务');
+                    renderAvailableErrands();
+                }
+            }, 500);
+            
+            // 10秒后停止检查
+            setTimeout(() => {
+                clearInterval(checkUserInterval);
+                console.log('用户初始化检查超时');
+            }, 10000);
+        }
+    } else {
+        console.log('初始化完成，但不在领取页面');
+    }
+    
     // 立即渲染聊天页面，确保显示正确的空状态
     if (document.getElementById('chat-home-page').classList.contains('active')) {
         renderChatHome();
+    }
+}
+
+// 在 initApp 函数中添加表结构检查
+async function checkTableStructure() {
+    try {
+        // 尝试查询一个包含所有字段的记录
+        const { data, error } = await supabase
+            .from('users')
+            .select('*')
+            .limit(1);
+            
+        if (error) {
+            console.warn('用户表结构不完整，某些功能可能受限:', error.message);
+            return false;
+        }
+        
+        console.log('用户表结构正常');
+        return true;
+    } catch (error) {
+        console.error('检查表结构失败:', error);
+        return false;
+    }
+}
+
+// === 新增函数：强制刷新订单数据 ===
+async function forceRefreshOrders() {
+    console.log('强制刷新订单数据');
+    memoryCache.cache.delete('delivery_orders');
+    memoryCache.cache.delete('errand_orders');
+    
+    const currentPage = document.querySelector('.page.active');
+    if (currentPage) {
+        const pageId = currentPage.id;
+        if (pageId === 'take-order-page') {
+            await renderAvailableOrders();
+        } else if (pageId === 'take-errand-page') {
+            await renderAvailableErrands();
+        }
     }
 }
 
@@ -3625,6 +4407,19 @@ async function initApp() {
     if (unreadUpdateInterval) clearInterval(unreadUpdateInterval);
     unreadUpdateInterval = setInterval(updateTabUnreadBadge, 10000);
     
+    // 新增：启动定时器定期刷新领取订单页面
+    setInterval(() => {
+        if (currentTakeOrderPage === 'delivery') {
+            console.log('定时刷新代取订单列表');
+            memoryCache.cache.delete('delivery_orders'); // 清除缓存
+            renderAvailableOrders();
+        } else if (currentTakeOrderPage === 'errand') {
+            console.log('定时刷新跑腿任务列表');
+            memoryCache.cache.delete('errand_orders'); // 清除缓存
+            renderAvailableErrands();
+        }
+    }, 15000); // 每15秒刷新一次
+    
     // 第十步：初始化未读徽章
     try {
         console.log('正在初始化未读徽章...');
@@ -3632,6 +4427,33 @@ async function initApp() {
         console.log('未读徽章初始化完成');
     } catch (error) {
         console.error('初始化未读徽章失败:', error);
+    }
+    
+    // 第十一步：预加载订单数据
+    try {
+        console.log('正在预加载订单数据...');
+        await Promise.all([
+            getCachedDeliveryOrders(),
+            getCachedErrandOrders()
+        ]);
+        console.log('订单数据预加载完成');
+        
+        // 检查当前是否在领取订单页面，如果是则刷新列表
+        const currentPage = document.querySelector('.page.active');
+        if (currentPage) {
+            const pageId = currentPage.id;
+            if (pageId === 'take-order-page') {
+                console.log('检测到当前在领取代取订单页面，自动刷新');
+                currentTakeOrderPage = 'delivery';
+                renderAvailableOrders();
+            } else if (pageId === 'take-errand-page') {
+                console.log('检测到当前在领取跑腿任务页面，自动刷新');
+                currentTakeOrderPage = 'errand';
+                renderAvailableErrands();
+            }
+        }
+    } catch (error) {
+        console.error('预加载订单数据失败:', error);
     }
 
     // ==================== 联系信息验证函数 ====================
@@ -3703,6 +4525,39 @@ function validateContactFormatSilently(contactType, contactInfo) {
     // 未知类型视为无效
     return false;
 }
+
+// 验证默认联系信息是否有效
+function validateDefaultContactInfo() {
+    if (!currentUser.defaultContactInfo || !currentUser.defaultContactType) {
+        return false;
+    }
+    
+    const contactType = currentUser.defaultContactType;
+    const contactInfo = currentUser.defaultContactInfo.trim();
+    
+    // 如果联系信息为空，认为是有效的（允许用户清空默认信息）
+    if (!contactInfo) {
+        return true;
+    }
+    
+    if (contactType === 'wechat') {
+        // 微信：6位字符及以上（字母、数字，可以组合）
+        const wechatRegex = /^[a-zA-Z0-9]{6,}$/;
+        return wechatRegex.test(contactInfo);
+    } else if (contactType === 'phone') {
+        // 手机号：11位数字，覆盖所有运营商号段
+        const phoneRegex = /^1(3[0-9]|4[0-9]|5[0-9]|6[0-9]|7[0-9]|8[0-9]|9[0-9])[0-9]{8}$/;
+        return phoneRegex.test(contactInfo);
+    } else if (contactType === 'qq') {
+        // QQ：6-10位数字
+        const qqRegex = /^[0-9]{6,10}$/;
+        return qqRegex.test(contactInfo);
+    }
+    
+    // 对于未知的联系方式类型，认为是有效的
+    return true;
+}
+
 // ==================== 新增结束 ====================
 
 // ==================== 设置页面视觉提示功能 ====================
@@ -3864,9 +4719,7 @@ const debouncedRefresh = debounce(async () => {
     // 还可以主动给用户一个微小的提示
     // 例如：showToast('列表已更新');
 }, 1000); // 1秒内发生的多次变化，只会触发一次刷新
-    // 显示初始化完成状态
-    showInitializationComplete();
-
+    
     // 第十一步：初始化实时验证
     console.log('正在初始化实时验证...');
     initRealTimeValidation();
@@ -4135,10 +4988,12 @@ function switchOrderTab(tab) {
                 }
 
             } catch (error) {
+                console.error('加载代取订单失败:', error);
                 ordersList.innerHTML = `
                     <div class="error-message">
                         <i class="fas fa-exclamation-triangle"></i>
                         <p>加载订单失败: ${error.message}</p>
+                        <button class="btn btn-secondary" onclick="renderAvailableOrders()">重试</button>
                     </div>
                 `;
             }
@@ -5081,27 +5936,63 @@ function closeSuccessModal() {
 
         // 优化的订单获取函数，带缓存
         async function getCachedDeliveryOrders() {
+            console.log('=== getCachedDeliveryOrders 开始执行 ===');
             const cacheKey = 'delivery_orders';
             const cached = memoryCache.get(cacheKey);
             if (cached) {
-                console.log('从缓存获取代取订单数据');
+                console.log('从缓存获取代取订单数据，数量：', cached.length);
+                // 检查缓存中的订单是否有状态为 pending 的
+                const pendingCount = cached.filter(o => o.status === 'pending').length;
+                console.log('缓存中待接单的代取订单数量：', pendingCount);
+                console.log('=== getCachedDeliveryOrders 执行完成（从缓存） ===');
                 return cached;
             }
             
-            const orders = await getDeliveryOrders();
-            memoryCache.set(cacheKey, orders);
-            return orders;
+            console.log('从数据库获取代取订单数据');
+            try {
+                const orders = await getDeliveryOrders();
+                console.log('从数据库获取到代取订单数量：', orders.length);
+                // 检查获取的订单是否有状态为 pending 的
+                const pendingCount = orders.filter(o => o.status === 'pending').length;
+                console.log('从数据库获取的待接单代取订单数量：', pendingCount);
+                
+                // 确保订单数据是有效的
+                if (!Array.isArray(orders)) {
+                    console.error('订单数据不是数组:', orders);
+                    console.log('将订单数据设为空数组');
+                    const emptyOrders = [];
+                    memoryCache.set(cacheKey, emptyOrders);
+                    return emptyOrders;
+                }
+                
+                memoryCache.set(cacheKey, orders);
+                console.log('=== getCachedDeliveryOrders 执行完成（从数据库） ===');
+                return orders;
+            } catch (error) {
+                console.error('getCachedDeliveryOrders 获取订单数据失败:', error);
+                // 返回空数组而不是抛出错误，避免渲染流程中断
+                return [];
+            }
         }
 
         async function getCachedErrandOrders() {
             const cacheKey = 'errand_orders';
             const cached = memoryCache.get(cacheKey);
             if (cached) {
-                console.log('从缓存获取跑腿订单数据');
+                console.log('从缓存获取跑腿订单数据，数量：', cached.length);
+                // 检查缓存中的订单是否有状态为 pending 的
+                const pendingCount = cached.filter(o => o.status === 'pending').length;
+                console.log('缓存中待接单的跑腿任务数量：', pendingCount);
                 return cached;
             }
             
+            console.log('从数据库获取跑腿订单数据');
             const orders = await getErrandOrders();
+            console.log('从数据库获取到跑腿任务数量：', orders.length);
+            // 检查获取的订单是否有状态为 pending 的
+            const pendingCount = orders.filter(o => o.status === 'pending').length;
+            console.log('从数据库获取的待接单跑腿任务数量：', pendingCount);
+            
             memoryCache.set(cacheKey, orders);
             return orders;
         }
@@ -5226,6 +6117,37 @@ async function refreshCurrentPage() {
                     setDefaultTimeValues();
                 }
             }
+
+            // 为表单页面添加自动填充
+            if (pageId === 'order-page' || pageId === 'take-order-page' || 
+                pageId === 'errand-order-page' || pageId === 'take-errand-page') {
+                
+                // 直接尝试自动填充（添加小延迟确保DOM渲染完成）
+                setTimeout(() => {
+                    console.log('尝试自动填充表单页面:', pageId);
+                    autoFillContactInfo();
+                }, 100);
+                
+                // 使用 MutationObserver 作为备用方案
+                const observer = new MutationObserver((mutations) => {
+                    console.log('MutationObserver 检测到变化，尝试自动填充');
+                    autoFillContactInfo();
+                });
+                
+                // 开始观察
+                if (targetPage) {
+                    observer.observe(targetPage, {
+                        childList: true,
+                        subtree: true
+                    });
+                    
+                    // 2秒后自动停止观察，避免内存泄漏
+                    setTimeout(() => {
+                        observer.disconnect();
+                    }, 2000);
+                }
+            }
+
             
             // 更新底部导航栏的active状态
             updateTabBarActive(pageId);
@@ -5272,8 +6194,25 @@ async function refreshCurrentPage() {
             }
         }
         
-        // 页面加载完成后初始化
+        // 测试函数，用户可以在控制台中调用
+        window.testOrderLoading = async function() {
+            console.log('=== 手动测试订单加载 ===');
+            console.log('当前用户:', currentUser);
+            console.log('当前页面:', document.querySelector('.page.active')?.id);
+            
+            try {
+                const orders = await getCachedDeliveryOrders();
+                console.log('测试获取订单成功，数量:', orders.length);
+                console.log('订单样本:', orders[0]);
+            } catch (error) {
+                console.error('测试获取订单失败:', error);
+            }
+        };
+        
+// 页面加载完成后初始化
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('=== DOM内容加载完成，开始初始化 ===');
+            
             // 添加优化的事件监听器
             window.addEventListener('scroll', handleScroll);
             window.addEventListener('resize', handleResize);
@@ -5281,8 +6220,24 @@ async function refreshCurrentPage() {
             // 初始化图片懒加载器
             window.lazyImageLoader = new LazyImageLoader();
             
+            // 打印当前页面状态
+            console.log('当前活动页面:', document.querySelector('.page.active')?.id);
+            console.log('领取页面元素状态:');
+            console.log('  take-order-page存在:', !!document.getElementById('take-order-page'));
+            console.log('  take-order-page active:', document.getElementById('take-order-page')?.classList.contains('active'));
+            console.log('  take-errand-page存在:', !!document.getElementById('take-errand-page'));
+            console.log('  take-errand-page active:', document.getElementById('take-errand-page')?.classList.contains('active'));
+            
             // 初始化应用
-            initApp();
+            console.log('开始初始化应用...');
+            initApp().then(() => {
+                console.log('=== 应用初始化完成 ===');
+                // 再次打印当前页面状态
+                console.log('初始化后活动页面:', document.querySelector('.page.active')?.id);
+                console.log('提示：您可以在控制台输入 testOrderLoading() 来测试订单加载');
+            }).catch(error => {
+                console.error('应用初始化失败:', error);
+            });
         });
         
         // 在页面卸载前清理事件监听器和定时器
