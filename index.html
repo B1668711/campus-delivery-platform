@@ -82,7 +82,9 @@
                 </div>
             </div>
             
-            <h3 style="margin: 20px 0 10px;">我的代取订单</h3>
+            <div class="section-header simple">
+                <h3>我的代取订单</h3>
+            </div>
             <div class="order-list" id="delivery-orders-list">
                 <div class="loading">
                     <i class="fas fa-spinner fa-spin"></i> 加载中...
@@ -105,7 +107,9 @@
                 </div>
             </div>
             
-            <h3 style="margin: 20px 0 10px;">我的跑腿任务</h3>
+            <div class="section-header simple">
+                <h3>我的跑腿任务</h3>
+            </div>
             <div class="order-list" id="errand-orders-list">
                 <div class="loading">
                     <i class="fas fa-spinner fa-spin"></i> 加载中...
@@ -239,9 +243,14 @@
     </div>
     
     <div id="available-orders">
-        <h3 style="margin: 20px 0 10px;">可接取的订单</h3>
+        <div class="section-header">
+            <h3>可接取的订单</h3>
+            <button class="btn-icon" onclick="renderAvailableOrders()" title="刷新订单">
+                <i class="fas fa-sync-alt"></i>
+            </button>
+        </div>
         <div class="order-list" id="available-orders-list">
-            <div class="loading">
+            <div class="loading" id="available-orders-loading">
                 <i class="fas fa-spinner fa-spin"></i> 加载中...
             </div>
         </div>
@@ -364,7 +373,12 @@
     </div>
     
     <div id="available-errands">
-        <h3 style="margin: 20px 0 10px;">可接取的跑腿任务</h3>
+        <div class="section-header">
+            <h3>可接取的跑腿任务</h3>
+            <button class="btn-icon" onclick="renderAvailableErrands()" title="刷新任务">
+                <i class="fas fa-sync-alt"></i>
+            </button>
+        </div>
         <div class="order-list" id="available-errands-list">
             <div class="loading">
                 <i class="fas fa-spinner fa-spin"></i> 加载中...
@@ -385,14 +399,18 @@
                 <p>查看所有订单的聊天记录</p>
             </div>
             
-            <h3 style="margin: 20px 0 10px;">配送中的订单</h3>
+            <div class="section-header simple">
+                <h3>配送中的订单</h3>
+            </div>
             <div class="order-list" id="active-chat-orders">
                 <div class="loading">
                     <i class="fas fa-spinner fa-spin"></i> 加载中...
                 </div>
             </div>
             
-            <h3 style="margin: 20px 0 10px;">已完成的订单</h3>
+            <div class="section-header simple">
+                <h3>已完成的订单</h3>
+            </div>
             <div class="order-list" id="completed-chat-orders">
                 <div class="loading">
                     <i class="fas fa-spinner fa-spin"></i> 加载中...

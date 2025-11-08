@@ -22,7 +22,66 @@
 }
 
 .btn-secondary:hover {
-  background-color: #5a6268;
+  background-color: #e0e9f5;
+}
+
+/* 区域标题栏样式 */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 20px 0 10px;
+}
+
+/* 简单标题样式 */
+.section-header.simple {
+  justify-content: flex-start;
+}
+
+.section-header h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #333;
+  flex: 1;
+  white-space: nowrap;
+}
+
+/* 图标按钮样式 */
+.btn-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background-color: transparent;
+  color: #4da6ff;
+  border: 1px solid #4da6ff;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+  margin-left: 10px;
+}
+
+.btn-icon:hover {
+  background-color: #4da6ff;
+  color: white;
+  transform: rotate(180deg);
+}
+
+.btn-icon i {
+  font-size: 14px;
+}
+
+/* 添加按钮点击时的旋转动画 */
+.btn-icon.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 .card {

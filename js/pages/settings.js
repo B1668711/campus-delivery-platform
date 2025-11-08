@@ -29,6 +29,24 @@ class SettingsPage {
                     </form>
                 </div>
                 <div class="card">
+                    <h3>自动填充联系信息</h3>
+                    <form id="contactForm">
+                        <div class="form-group">
+                            <label for="defaultContactName">默认联系人姓名</label>
+                            <input type="text" id="defaultContactName" name="defaultContactName" placeholder="请输入默认联系人姓名">
+                        </div>
+                        <div class="form-group">
+                            <label for="defaultContactPhone">默认联系人电话</label>
+                            <input type="tel" id="defaultContactPhone" name="defaultContactPhone" placeholder="请输入默认联系人电话">
+                        </div>
+                        <div class="form-group">
+                            <label for="defaultContactAddress">默认联系地址</label>
+                            <input type="text" id="defaultContactAddress" name="defaultContactAddress" placeholder="请输入默认联系地址">
+                        </div>
+                        <button type="submit" class="btn">保存默认联系人</button>
+                    </form>
+                </div>
+                <div class="card">
                     <h3>安全设置</h3>
                     <form id="securityForm">
                         <div class="form-group">
@@ -50,12 +68,62 @@ class SettingsPage {
             
             // 添加事件监听器
             this.addEventListeners();
+            
+            // 页面加载完成后填充已保存的默认联系人信息
+            this.fillSavedContactInfo();
+        }
+    }
+    
+    // 填充已保存的默认联系人信息
+    fillSavedContactInfo() {
+        // 使用 app.js 中的 currentUser 对象来填充信息
+        if (window.currentUser) {
+            const currentUser = window.currentUser;
+            
+            const defaultContactNameInput = document.getElementById('defaultContactName');
+            const defaultContactPhoneInput = document.getElementById('defaultContactPhone');
+            const defaultContactAddressInput = document.getElementById('defaultContactAddress');
+            
+            if (defaultContactNameInput && currentUser.defaultContactName) {
+                defaultContactNameInput.value = currentUser.defaultContactName;
+            }
+            
+            if (defaultContactPhoneInput && currentUser.defaultContactInfo) {
+                defaultContactPhoneInput.value = currentUser.defaultContactInfo;
+            }
+            
+            if (defaultContactAddressInput && currentUser.defaultAddress) {
+                defaultContactAddressInput.value = currentUser.defaultAddress;
+            }
+        } else {
+            // 降级到 localStorage 方式
+            const contactInfo = localStorage.getItem('defaultContactInfo');
+            if (contactInfo) {
+                const contactData = JSON.parse(contactInfo);
+                
+                const defaultContactNameInput = document.getElementById('defaultContactName');
+                const defaultContactPhoneInput = document.getElementById('defaultContactPhone');
+                const defaultContactAddressInput = document.getElementById('defaultContactAddress');
+                
+                if (defaultContactNameInput && contactData.defaultContactName) {
+                    defaultContactNameInput.value = contactData.defaultContactName;
+                }
+                
+                if (defaultContactPhoneInput && contactData.defaultContactPhone) {
+                    defaultContactPhoneInput.value = contactData.defaultContactPhone;
+                }
+                
+                if (defaultContactAddressInput && contactData.defaultContactAddress) {
+                    defaultContactAddressInput.value = contactData.defaultContactAddress;
+                }
+            }
         }
     }
     
     // 添加事件监听器
     addEventListeners() {
         const profileForm = document.getElementById('profileForm');
+        const contactForm = document.getElementById('contactForm');
         const securityForm = document.getElementById('securityForm');
         
         if (profileForm) {
@@ -72,6 +140,41 @@ class SettingsPage {
                     };
                     
                     console.log('保存个人信息:', profileData);
+                }
+            });
+        }
+        
+        if (contactForm) {
+            contactForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                console.log('保存默认联系人信息');
+                // 处理保存默认联系人信息到 currentUser 对象
+                const formData = new FormData(contactForm);
+                const contactData = {
+                    defaultContactName: formData.get('defaultContactName'),
+                    defaultContactPhone: formData.get('defaultContactPhone'),
+                    defaultContactAddress: formData.get('defaultContactAddress')
+                };
+                
+                // 如果存在 window.saveUser 函数，则使用它来保存
+                if (window.saveUser && typeof window.saveUser === 'function') {
+                    try {
+                        await window.saveUser({
+                            defaultContactName: contactData.defaultContactName,
+                            defaultContactInfo: contactData.defaultContactPhone,
+                            defaultAddress: contactData.defaultContactAddress
+                        });
+                        console.log('默认联系人信息已保存到 currentUser');
+                        alert('默认联系人信息已保存');
+                    } catch (error) {
+                        console.error('保存默认联系人信息失败:', error);
+                        alert('保存失败，请重试');
+                    }
+                } else {
+                    // 降级到 localStorage 方式
+                    localStorage.setItem('defaultContactInfo', JSON.stringify(contactData));
+                    console.log('保存默认联系人信息到 localStorage:', contactData);
+                    alert('默认联系人信息已保存');
                 }
             });
         }
