@@ -2477,6 +2477,15 @@ async function takeOrder(orderId) {
 
     // 5. 调用后端的原子函数来处理接单逻辑
     try {
+        console.log('接单参数:', {
+            order_id_in: orderId,
+            taker_id_in: currentUser.id,
+            taker_name_in: takerName,
+            taker_contact_in: takerContactInfo,
+            taker_contact_type_in: contactType,
+            order_type_in: 'delivery'
+        });
+        
         const { data, error } = await supabase.rpc('take_order_atomic', {
             order_id_in: orderId,
             taker_id_in: currentUser.id,
@@ -2512,6 +2521,7 @@ async function takeOrder(orderId) {
     } catch (error) {
         alert('接单失败，请检查网络后重试！');
         console.error('接单 RPC 调用失败:', error);
+        console.error('错误详情:', JSON.stringify(error, null, 2));
     } finally {
         // 恢复所有接单按钮状态
         takeButtons.forEach(btn => resetButton(btn));
@@ -2551,6 +2561,15 @@ async function takeErrandOrder(orderId) {
 
     // 5. 调用后端的原子函数来处理接单逻辑
     try {
+        console.log('跑腿接单参数:', {
+            order_id_in: orderId,
+            taker_id_in: currentUser.id,
+            taker_name_in: takerName,
+            taker_contact_in: takerContactInfo,
+            taker_contact_type_in: contactType,
+            order_type_in: 'errand'
+        });
+        
         const { data, error } = await supabase.rpc('take_order_atomic', {
             order_id_in: orderId,
             taker_id_in: currentUser.id,
@@ -2587,6 +2606,7 @@ async function takeErrandOrder(orderId) {
     } catch (error) {
         alert('接单失败，请检查网络后重试！');
         console.error('接单 RPC 调用失败:', error);
+        console.error('错误详情:', JSON.stringify(error, null, 2));
     } finally {
         // 恢复所有接单按钮状态
         takeButtons.forEach(btn => resetButton(btn));
