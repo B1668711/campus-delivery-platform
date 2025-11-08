@@ -1,4 +1,4 @@
--- 更新修改订单函数，使其只更新每个表中实际存在的列
+-- 更新修改订单函数，根据实际表结构
 CREATE OR REPLACE FUNCTION modify_order(
     order_id_in text,
     user_id_in text,
@@ -7,10 +7,6 @@ CREATE OR REPLACE FUNCTION modify_order(
     description_in text DEFAULT null,
     pickup_location_in text DEFAULT null,
     delivery_location_in text DEFAULT null,
-    pickup_address_in text DEFAULT null,
-    delivery_address_in text DEFAULT null,
-    pickup_code_in text DEFAULT null,
-    delivery_time_in timestamp with time zone DEFAULT null,
     deadline_in timestamp with time zone DEFAULT null,
     reward_in numeric DEFAULT null,
     contact_name_in text DEFAULT null,
@@ -70,17 +66,14 @@ BEGIN
     is_taken := order_record.status = 'taken';
     taker_contact_info := order_record.taker_contact;
     
-    -- 更新订单信息 - 分别处理每种订单类型，只更新存在的列
+    -- 更新订单信息 - 两个表结构相同
     IF order_type_in = 'delivery' THEN
         UPDATE delivery_orders 
         SET 
+            title = COALESCE(title_in, title),
             description = COALESCE(description_in, description),
             pickup_location = COALESCE(pickup_location_in, pickup_location),
             delivery_location = COALESCE(delivery_location_in, delivery_location),
-            pickup_address = COALESCE(pickup_address_in, pickup_address),
-            delivery_address = COALESCE(delivery_address_in, delivery_address),
-            pickup_code = COALESCE(pickup_code_in, pickup_code),
-            delivery_time = COALESCE(delivery_time_in, delivery_time),
             deadline = COALESCE(deadline_in, deadline),
             reward = COALESCE(reward_in, reward),
             contact_name = COALESCE(contact_name_in, contact_name),
