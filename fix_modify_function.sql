@@ -115,11 +115,20 @@ BEGIN
         -- 移除最后的逗号并添加updated_at和WHERE子句
         sql_update := sql_update || 'updated_at = NOW() WHERE id = :order_id_in';
         
-        -- 执行动态SQL
-        EXECUTE sql_update USING 
-            title_in, description_in, pickup_location_in, delivery_location_in, 
-            deadline_in, reward_in, contact_name_in, contact_info_in, 
-            contact_type_in, notes_in, order_id_in;
+        -- 执行动态SQL - 使用format函数构建SQL并替换参数
+        sql_update := REPLACE(sql_update, ':title_in', COALESCE(quote_literal(title_in), 'NULL'));
+        sql_update := REPLACE(sql_update, ':description_in', COALESCE(quote_literal(description_in), 'NULL'));
+        sql_update := REPLACE(sql_update, ':pickup_location_in', COALESCE(quote_literal(pickup_location_in), 'NULL'));
+        sql_update := REPLACE(sql_update, ':delivery_location_in', COALESCE(quote_literal(delivery_location_in), 'NULL'));
+        sql_update := REPLACE(sql_update, ':deadline_in', COALESCE(quote_literal(deadline_in), 'NULL'));
+        sql_update := REPLACE(sql_update, ':reward_in', COALESCE(reward_in::text, 'NULL'));
+        sql_update := REPLACE(sql_update, ':contact_name_in', COALESCE(quote_literal(contact_name_in), 'NULL'));
+        sql_update := REPLACE(sql_update, ':contact_info_in', COALESCE(quote_literal(contact_info_in), 'NULL'));
+        sql_update := REPLACE(sql_update, ':contact_type_in', COALESCE(quote_literal(contact_type_in), 'NULL'));
+        sql_update := REPLACE(sql_update, ':notes_in', COALESCE(quote_literal(notes_in), 'NULL'));
+        sql_update := REPLACE(sql_update, ':order_id_in', quote_literal(order_id_in));
+        
+        EXECUTE sql_update;
             
     ELSIF order_type_in = 'errand' THEN
         -- 创建UPDATE语句的基础部分
@@ -169,11 +178,20 @@ BEGIN
         -- 移除最后的逗号并添加updated_at和WHERE子句
         sql_update := sql_update || 'updated_at = NOW() WHERE id = :order_id_in';
         
-        -- 执行动态SQL
-        EXECUTE sql_update USING 
-            title_in, description_in, pickup_location_in, delivery_location_in, 
-            deadline_in, reward_in, contact_name_in, contact_info_in, 
-            contact_type_in, notes_in, order_id_in;
+        -- 执行动态SQL - 使用format函数构建SQL并替换参数
+        sql_update := REPLACE(sql_update, ':title_in', COALESCE(quote_literal(title_in), 'NULL'));
+        sql_update := REPLACE(sql_update, ':description_in', COALESCE(quote_literal(description_in), 'NULL'));
+        sql_update := REPLACE(sql_update, ':pickup_location_in', COALESCE(quote_literal(pickup_location_in), 'NULL'));
+        sql_update := REPLACE(sql_update, ':delivery_location_in', COALESCE(quote_literal(delivery_location_in), 'NULL'));
+        sql_update := REPLACE(sql_update, ':deadline_in', COALESCE(quote_literal(deadline_in), 'NULL'));
+        sql_update := REPLACE(sql_update, ':reward_in', COALESCE(reward_in::text, 'NULL'));
+        sql_update := REPLACE(sql_update, ':contact_name_in', COALESCE(quote_literal(contact_name_in), 'NULL'));
+        sql_update := REPLACE(sql_update, ':contact_info_in', COALESCE(quote_literal(contact_info_in), 'NULL'));
+        sql_update := REPLACE(sql_update, ':contact_type_in', COALESCE(quote_literal(contact_type_in), 'NULL'));
+        sql_update := REPLACE(sql_update, ':notes_in', COALESCE(quote_literal(notes_in), 'NULL'));
+        sql_update := REPLACE(sql_update, ':order_id_in', quote_literal(order_id_in));
+        
+        EXECUTE sql_update;
     END IF;
     
     -- 如果订单已被接单，需要通知接单者
