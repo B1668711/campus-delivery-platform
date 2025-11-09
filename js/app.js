@@ -3699,6 +3699,14 @@ function showPage(pageId) {
         if (navbarTitle) navbarTitle.textContent = '我的聊天';
         document.querySelectorAll('.tab-item')[3].classList.add('active');
         renderChatHome();
+        
+        // 添加延迟渲染，确保DOM已经准备好
+        setTimeout(() => {
+            if (currentUser) {
+                console.log('延迟渲染聊天页面');
+                renderChatHome();
+            }
+        }, 500);
     } else if (pageId === 'settings-page') {
         document.querySelectorAll('.tab-item')[4].classList.add('active');
         updateUserDisplay();
@@ -3926,15 +3934,31 @@ function showPage(pageId) {
 
 // 渲染聊天主页
 async function renderChatHome() {
+    console.log('renderChatHome 开始执行');
+    
+    // 检查当前用户是否已初始化
+    if (!currentUser) {
+        console.error('currentUser 未定义，无法渲染聊天主页');
+        return;
+    }
+    
     const activeChatOrders = document.getElementById('active-chat-orders');
     const completedChatOrders = document.getElementById('completed-chat-orders');
     
+    if (!activeChatOrders || !completedChatOrders) {
+        console.error('聊天页面元素未找到');
+        return;
+    }
+    
     try {
+        console.log('开始获取订单数据...');
         // 使用带缓存的函数获取订单数据
         const [deliveryOrders, errandOrders] = await Promise.all([
             getCachedDeliveryOrders(),
             getCachedErrandOrders()
         ]);
+        
+        console.log('获取到订单数据，deliveryOrders:', deliveryOrders.length, 'errandOrders:', errandOrders.length);
         
         // 获取当前用户相关的订单
         const myDeliveryOrders = deliveryOrders.filter(order => 
@@ -3946,6 +3970,7 @@ async function renderChatHome() {
         );
         
         const allOrders = [...myDeliveryOrders, ...myErrandOrders];
+        console.log('当前用户相关订单总数:', allOrders.length);
         
         // 分离配送中和已完成的订单
         const activeOrders = allOrders.filter(order => 
@@ -3956,8 +3981,13 @@ async function renderChatHome() {
             order.status === 'completed' || order.status === 'cancelled'
         );
         
+        console.log('配送中订单数:', activeOrders.length, '已完成订单数:', completedOrders.length);
+        
         // 直接渲染配送中的订单（不使用虚拟滚动）
         if (activeChatOrders) {
+            // 先清空现有内容
+            activeChatOrders.innerHTML = '';
+            
             if (activeOrders.length === 0) {
                 activeChatOrders.innerHTML = `
                     <div class="empty-state">
@@ -3966,17 +3996,24 @@ async function renderChatHome() {
                     </div>
                 `;
             } else {
-                activeChatOrders.innerHTML = '';
                 for (const order of activeOrders) {
-                    const unreadCount = await getUnreadMessageCount(order.id, order.title ? 'errand' : 'delivery');
-                    const orderHTML = createChatOrderItemHTML(order, unreadCount);
-                    activeChatOrders.insertAdjacentHTML('beforeend', orderHTML);
+                    try {
+                        const unreadCount = await getUnreadMessageCount(order.id, order.title ? 'errand' : 'delivery');
+                        const orderHTML = createChatOrderItemHTML(order, unreadCount);
+                        activeChatOrders.insertAdjacentHTML('beforeend', orderHTML);
+                    } catch (error) {
+                        console.error('渲染单个订单项失败:', order, error);
+                        // 继续处理其他订单
+                    }
                 }
             }
         }
         
         // 直接渲染已完成的订单（不使用虚拟滚动）
         if (completedChatOrders) {
+            // 先清空现有内容
+            completedChatOrders.innerHTML = '';
+            
             if (completedOrders.length === 0) {
                 completedChatOrders.innerHTML = `
                     <div class="empty-state">
@@ -3985,11 +4022,15 @@ async function renderChatHome() {
                     </div>
                 `;
             } else {
-                completedChatOrders.innerHTML = '';
                 for (const order of completedOrders) {
-                    const unreadCount = await getUnreadMessageCount(order.id, order.title ? 'errand' : 'delivery');
-                    const orderHTML = createChatOrderItemHTML(order, unreadCount);
-                    completedChatOrders.insertAdjacentHTML('beforeend', orderHTML);
+                    try {
+                        const unreadCount = await getUnreadMessageCount(order.id, order.title ? 'errand' : 'delivery');
+                        const orderHTML = createChatOrderItemHTML(order, unreadCount);
+                        completedChatOrders.insertAdjacentHTML('beforeend', orderHTML);
+                    } catch (error) {
+                        console.error('渲染单个订单项失败:', order, error);
+                        // 继续处理其他订单
+                    }
                 }
             }
         }
@@ -4308,6 +4349,19 @@ function showInitializationComplete() {
     if (document.getElementById('chat-home-page').classList.contains('active')) {
         renderChatHome();
     }
+    
+    // 添加一个全局的事件监听器，确保页面切换时正确渲染
+    document.addEventListener('click', function(event) {
+        const target = event.target.closest('.tab-item[onclick*="chat-home-page"]');
+        if (target) {
+            // 延迟渲染，确保页面切换完成
+            setTimeout(() => {
+                if (currentUser) {
+                    renderChatHome();
+                }
+            }, 100);
+        }
+    });
 }
 
 // 在 initApp 函数中添加表结构检查
@@ -5625,19 +5679,43 @@ function closeSuccessModal() {
             <div class="order-detail-section">
                 <h4>联系人信息</h4>
                 <div class="order-detail-info">
-                    <!-- 发布者信息 - 任何状态下都显示 -->
+                    <!-- 发布者信息 - 发布者任何状态下都显示，接单人只有在接单后才显示 -->
                     <div class="order-detail-item">
                         <span class="order-detail-label">发布者：</span>
                         <span class="order-detail-value">${order.contact_name}</span>
                     </div>
-                    <div class="order-detail-item">
-                        <span class="order-detail-label">发布者联系方式：</span>
-                        <span class="order-detail-value">${order.contact_info}</span>
-                    </div>
-                    <div class="order-detail-item">
-                        <span class="order-detail-label">发布者联系方式类型：</span>
-                        <span class="order-detail-value">${getContactTypeText(order.contact_type)}</span>
-                    </div>
+                    
+                    ${isMyOrder ? `
+                        <!-- 如果当前用户是发布者，总是显示联系方式 -->
+                        <div class="order-detail-item">
+                            <span class="order-detail-label">发布者联系方式：</span>
+                            <span class="order-detail-value">${order.contact_info}</span>
+                        </div>
+                        <div class="order-detail-item">
+                            <span class="order-detail-label">发布者联系方式类型：</span>
+                            <span class="order-detail-value">${getContactTypeText(order.contact_type)}</span>
+                        </div>
+                    ` : (order.status !== 'pending' && order.taken_by === currentUser.id) ? `
+                        <!-- 如果当前用户是接单人且已接单，显示发布者联系方式 -->
+                        <div class="order-detail-item">
+                            <span class="order-detail-label">发布者联系方式：</span>
+                            <span class="order-detail-value">${order.contact_info}</span>
+                        </div>
+                        <div class="order-detail-item">
+                            <span class="order-detail-label">发布者联系方式类型：</span>
+                            <span class="order-detail-value">${getContactTypeText(order.contact_type)}</span>
+                        </div>
+                    ` : `
+                        <!-- 其他情况不显示发布者联系方式 -->
+                        <div class="order-detail-item">
+                            <span class="order-detail-label">发布者联系方式：</span>
+                            <span class="order-detail-value" style="color: #999; font-style: italic;">接单后可见</span>
+                        </div>
+                        <div class="order-detail-item">
+                            <span class="order-detail-label">发布者联系方式类型：</span>
+                            <span class="order-detail-value" style="color: #999; font-style: italic;">接单后可见</span>
+                        </div>
+                    `}
                     
                     ${order.taken_by ? `
                         <!-- 接单者信息 - 只在有人接单后显示 -->
@@ -6305,6 +6383,7 @@ function closeSuccessModal() {
         }
 
         async function getCachedErrandOrders() {
+            console.log('=== getCachedErrandOrders 开始执行 ===');
             const cacheKey = 'errand_orders';
             const cached = memoryCache.get(cacheKey);
             if (cached) {
@@ -6316,14 +6395,30 @@ function closeSuccessModal() {
             }
             
             console.log('从数据库获取跑腿订单数据');
-            const orders = await getErrandOrders();
-            console.log('从数据库获取到跑腿任务数量：', orders.length);
-            // 检查获取的订单是否有状态为 pending 的
-            const pendingCount = orders.filter(o => o.status === 'pending').length;
-            console.log('从数据库获取的待接单跑腿任务数量：', pendingCount);
-            
-            memoryCache.set(cacheKey, orders);
-            return orders;
+            try {
+                const orders = await getErrandOrders();
+                console.log('从数据库获取到跑腿任务数量：', orders.length);
+                // 检查获取的订单是否有状态为 pending 的
+                const pendingCount = orders.filter(o => o.status === 'pending').length;
+                console.log('从数据库获取的待接单跑腿任务数量：', pendingCount);
+                
+                // 确保订单数据是有效的
+                if (!Array.isArray(orders)) {
+                    console.error('跑腿订单数据不是数组:', orders);
+                    console.log('将跑腿订单数据设为空数组');
+                    const emptyOrders = [];
+                    memoryCache.set(cacheKey, emptyOrders);
+                    return emptyOrders;
+                }
+                
+                memoryCache.set(cacheKey, orders);
+                console.log('=== getCachedErrandOrders 执行完成（从数据库） ===');
+                return orders;
+            } catch (error) {
+                console.error('getCachedErrandOrders 获取订单数据失败:', error);
+                // 返回空数组而不是抛出错误，避免渲染流程中断
+                return [];
+            }
         }
 
         // 清除订单缓存

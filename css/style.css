@@ -662,8 +662,9 @@ input[type="datetime-local"].form-input {
     margin-top: 20px;
 }
 
-.required {
-    color: #333;
+/* 对于表单标签之外的required元素（如修改订单模态框中的星号），设置为红色 */
+span.required, div.required {
+    color: #ff4757;
 }
 
 /* 设置页面样式优化 */
