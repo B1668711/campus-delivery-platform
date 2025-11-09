@@ -375,20 +375,42 @@ async function syncUserFromDatabase(deviceId) {
             const userData = data[0];
             console.log('找到用户数据:', userData);
             
+            // 检查是否有主账户ID，如果有，则获取主账户的数据
+            let finalUserData = userData;
+            if (userData.master_user_id) {
+                console.log('用户有关联的主账户，获取主账户数据');
+                const { data: masterUserData, error: masterError } = await supabase
+                    .from('users')
+                    .select('*')
+                    .eq('id', userData.master_user_id)
+                    .single();
+                
+                if (!masterError && masterUserData) {
+                    // 使用主账户的数据，但保留设备ID
+                    finalUserData = {
+                        ...masterUserData,
+                        device_id: userData.device_id, // 保留当前设备ID
+                        id: userData.id // 保留当前用户ID
+                    };
+                    console.log('使用主账户数据');
+                }
+            }
+            
             // 更新本地用户数据
             currentUser = {
-                id: userData.id,
-                deviceId: userData.device_id,
-                name: userData.name,
-                contactMethod: userData.contact_method,
-                contactInfo: userData.contact_info,
+                id: finalUserData.id,
+                deviceId: finalUserData.device_id,
+                name: finalUserData.name,
+                contactMethod: finalUserData.contact_method,
+                contactInfo: finalUserData.contact_info,
                 isTaker: false,
-                autoFillContact: userData.auto_fill_contact,
-                defaultContactType: userData.default_contact_type,
-                defaultContactInfo: userData.default_contact_info,
-                defaultContactName: userData.default_contact_name || '', // 添加默认联系人姓名
-                defaultAddress: userData.default_address,
-                createdAt: userData.created_at
+                autoFillContact: finalUserData.auto_fill_contact,
+                defaultContactType: finalUserData.default_contact_type,
+                defaultContactInfo: finalUserData.default_contact_info,
+                defaultContactName: finalUserData.default_contact_name || '', // 添加默认联系人姓名
+                defaultAddress: finalUserData.default_address,
+                createdAt: finalUserData.created_at,
+                master_user_id: finalUserData.master_user_id // 保存主账户ID
             };
             
             localStorage.setItem('currentUser', JSON.stringify(currentUser));
@@ -407,6 +429,55 @@ async function createNewUserInDatabase(deviceId) {
     try {
         console.log('正在在数据库中创建新用户，deviceId:', deviceId);
         
+        // 先检查设备ID是否已存在
+        const { data: existingDevice, error: checkError } = await supabase
+            .from('users')
+            .select('id')
+            .eq('device_id', deviceId)
+            .limit(1);
+            
+        if (checkError) {
+            console.error('检查设备ID失败:', checkError);
+            throw checkError;
+        }
+        
+        // 如果设备ID已存在，直接使用该用户
+        if (existingDevice && existingDevice.length > 0) {
+            console.log('设备ID已存在，使用现有用户');
+            const { data: existingUser, error: fetchError } = await supabase
+                .from('users')
+                .select('*')
+                .eq('id', existingDevice[0].id)
+                .single();
+                
+            if (fetchError) {
+                console.error('获取现有用户失败:', fetchError);
+                throw fetchError;
+            }
+            
+            if (existingUser) {
+                currentUser = {
+                    id: existingUser.id,
+                    deviceId: existingUser.device_id,
+                    name: existingUser.name,
+                    contactMethod: existingUser.contact_method || 'wechat',
+                    contactInfo: existingUser.contact_info || '',
+                    isTaker: false,
+                    autoFillContact: existingUser.auto_fill_contact !== undefined ? existingUser.auto_fill_contact : true,
+                    defaultContactType: existingUser.default_contact_type || 'wechat',
+                    defaultContactInfo: existingUser.default_contact_info || '',
+                    defaultContactName: existingUser.default_contact_name || '',
+                    defaultAddress: existingUser.default_address || '',
+                    createdAt: existingUser.created_at
+                };
+                
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                console.log('使用现有用户:', currentUser);
+                return;
+            }
+        }
+        
+        // 如果设备ID不存在，创建新用户
         const userId = 'user_' + Date.now();
         const userData = {
             device_id: deviceId,
