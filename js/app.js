@@ -5952,32 +5952,6 @@ function closeSuccessModal() {
                     }
                 }
                 
-                // 调用数据库函数修改订单
-                const { data, error } = await supabase.rpc('update_order_info', params);
-                
-                if (error) throw error;
-                
-                // 根据返回结果处理
-                switch(data) {
-                    case 'SUCCESS':
-                        showSuccessModal('修改成功', '订单信息已更新。');
-                        break;
-                    case 'SUCCESS_WITH_NOTIFICATION':
-                        showSuccessModal('修改成功', '订单信息已更新，并已通知接单者。');
-                        break;
-                    case 'ORDER_NOT_FOUND':
-                        alert('订单不存在！');
-                        break;
-                    case 'NO_PERMISSION':
-                        alert('您没有权限修改此订单！');
-                        break;
-                    case 'WRONG_STATUS':
-                        alert('当前订单状态不能修改！');
-                        break;
-                    default:
-                        alert('修改失败，请重试！');
-                }
-                
                 // 刷新页面数据
                 await refreshAllPages();
                 closeModifyOrder(); // 关闭修改模态框
