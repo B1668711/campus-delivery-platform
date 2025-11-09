@@ -51,9 +51,9 @@ DECLARE
     user_record RECORD;
 BEGIN
     -- 查找用户
-    SELECT id, device_id, name, password_hash INTO user_record
-    FROM users
-    WHERE username = username_in;
+    SELECT u.id, u.device_id, u.name, u.password_hash INTO user_record
+    FROM users u
+    WHERE u.username = username_in;
     
     IF NOT FOUND THEN
         RETURN QUERY SELECT 
@@ -103,13 +103,12 @@ SECURITY DEFINER
 AS $$
 DECLARE
     user_record RECORD;
-    device_records RECORD;
     updated_count INTEGER := 0;
 BEGIN
-    -- 查找用户
-    SELECT id, name, password_hash INTO user_record
-    FROM users
-    WHERE username = username_in;
+    -- 查找用户，使用表别名避免列名冲突
+    SELECT u.id, u.name, u.password_hash INTO user_record
+    FROM users u
+    WHERE u.username = username_in;
     
     IF NOT FOUND THEN
         RETURN QUERY SELECT FALSE, '用户名或密码错误', NULL;
