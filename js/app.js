@@ -5625,17 +5625,22 @@ function closeSuccessModal() {
             <div class="order-detail-section">
                 <h4>联系人信息</h4>
                 <div class="order-detail-info">
+                    <!-- 发布者信息 - 任何状态下都显示 -->
                     <div class="order-detail-item">
                         <span class="order-detail-label">发布者：</span>
                         <span class="order-detail-value">${order.contact_name}</span>
                     </div>
                     <div class="order-detail-item">
-                        <span class="order-detail-label">联系方式：</span>
-                        <span class="order-detail-value">
-                            ${order.taken_by ? order.contact_info : '<span style="color: #999;">接单后显示</span>'}
-                        </span>
+                        <span class="order-detail-label">发布者联系方式：</span>
+                        <span class="order-detail-value">${order.contact_info}</span>
                     </div>
+                    <div class="order-detail-item">
+                        <span class="order-detail-label">发布者联系方式类型：</span>
+                        <span class="order-detail-value">${getContactTypeText(order.contact_type)}</span>
+                    </div>
+                    
                     ${order.taken_by ? `
+                        <!-- 接单者信息 - 只在有人接单后显示 -->
                         <div class="order-detail-item">
                             <span class="order-detail-label">接单者：</span>
                             <span class="order-detail-value">${order.taker_name}</span>
@@ -5643,6 +5648,10 @@ function closeSuccessModal() {
                         <div class="order-detail-item">
                             <span class="order-detail-label">接单者联系方式：</span>
                             <span class="order-detail-value">${order.taker_contact}</span>
+                        </div>
+                        <div class="order-detail-item">
+                            <span class="order-detail-label">接单者联系方式类型：</span>
+                            <span class="order-detail-value">${getContactTypeText(order.taker_contact_type)}</span>
                         </div>
                     ` : ''}
                 </div>
@@ -5968,6 +5977,17 @@ function closeSuccessModal() {
             const modifyModal = document.querySelector('.modify-order-modal');
             if (modifyModal) {
                 modifyModal.remove();
+            }
+        }
+        
+        // 获取联系方式类型文本
+        function getContactTypeText(contactType) {
+            switch(contactType) {
+                case 'phone': return '电话';
+                case 'wechat': return '微信';
+                case 'qq': return 'QQ';
+                case 'other': return '其他';
+                default: return contactType || '未知';
             }
         }
 
