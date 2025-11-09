@@ -322,9 +322,13 @@ body {
     color: #333;
 }
 
+.form-label.required {
+    color: #333; /* 确保标签文字为黑色 */
+}
+
 .form-label.required::after {
     content: " *";
-    color: #ff4757;
+    color: #ff4757; /* 只将星号设置为红色 */
 }
 
 .form-input {
@@ -659,7 +663,7 @@ input[type="datetime-local"].form-input {
 }
 
 .required {
-    color: #ff4444;
+    color: #333;
 }
 
 /* 设置页面样式优化 */

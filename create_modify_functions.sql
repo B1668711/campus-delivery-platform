@@ -68,6 +68,7 @@ BEGIN
     
     -- 更新订单信息 - 分别处理每种订单类型
     IF order_type_in = 'delivery' THEN
+        -- 更新delivery_orders表，使用正确的字段名
         -- 先检查delivery_orders表是否存在title列
         IF EXISTS (
             SELECT 1 FROM information_schema.columns 
@@ -77,9 +78,9 @@ BEGIN
             SET 
                 title = COALESCE(title_in, title),
                 description = COALESCE(description_in, description),
-                pickup_location = COALESCE(pickup_location_in, pickup_location),
-                delivery_location = COALESCE(delivery_location_in, delivery_location),
-                deadline = COALESCE(deadline_in, deadline),
+                pickup_address = COALESCE(pickup_location_in, pickup_address), -- 使用正确的字段名
+                delivery_address = COALESCE(delivery_location_in, delivery_address), -- 使用正确的字段名
+                delivery_time = COALESCE(deadline_in, delivery_time), -- 使用正确的字段名
                 reward = COALESCE(reward_in, reward),
                 contact_name = COALESCE(contact_name_in, contact_name),
                 contact_info = COALESCE(contact_info_in, contact_info),
@@ -92,9 +93,9 @@ BEGIN
             UPDATE delivery_orders 
             SET 
                 description = COALESCE(description_in, description),
-                pickup_location = COALESCE(pickup_location_in, pickup_location),
-                delivery_location = COALESCE(delivery_location_in, delivery_location),
-                deadline = COALESCE(deadline_in, deadline),
+                pickup_address = COALESCE(pickup_location_in, pickup_address), -- 使用正确的字段名
+                delivery_address = COALESCE(delivery_location_in, delivery_address), -- 使用正确的字段名
+                delivery_time = COALESCE(deadline_in, delivery_time), -- 使用正确的字段名
                 reward = COALESCE(reward_in, reward),
                 contact_name = COALESCE(contact_name_in, contact_name),
                 contact_info = COALESCE(contact_info_in, contact_info),

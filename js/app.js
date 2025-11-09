@@ -5703,11 +5703,54 @@ function closeSuccessModal() {
             try {
                 let order;
                 if (orderType === 'delivery') {
-                    const orders = await getDeliveryOrders();
-                    order = orders.find(o => o.id === orderId);
+                    // 直接从数据库获取指定订单的详细信息
+                    const { data, error } = await supabase
+                        .from('delivery_orders')
+                        .select('*')
+                        .eq('id', orderId)
+                        .single();
+                    
+                    if (error) throw error;
+                    order = data;
+                    
+                    // 对于代取订单，需要映射字段名以确保表单正确填充
+                    if (order) {
+                        // 确保所有必需的字段都有值
+                        order.title = order.title || '代取快递';
+                        order.pickup_location = order.pickup_address || '';
+                        order.delivery_location = order.delivery_address || '';
+                        order.deadline = order.delivery_time || '';
+                        order.description = order.description || '';
+                        order.contact_name = order.contact_name || '';
+                        order.contact_info = order.contact_info || '';
+                        order.contact_type = order.contact_type || 'wechat';
+                        order.reward = order.reward || '3';
+                        order.notes = order.notes || '';
+                    }
                 } else {
-                    const orders = await getErrandOrders();
-                    order = orders.find(o => o.id === orderId);
+                    // 直接从数据库获取指定跑腿订单的详细信息
+                    const { data, error } = await supabase
+                        .from('errand_orders')
+                        .select('*')
+                        .eq('id', orderId)
+                        .single();
+                    
+                    if (error) throw error;
+                    order = data;
+                    
+                    // 确保所有必需的字段都有值
+                    if (order) {
+                        order.title = order.title || '跑腿任务';
+                        order.pickup_location = order.pickup_location || '';
+                        order.delivery_location = order.delivery_location || '';
+                        order.deadline = order.deadline || '';
+                        order.description = order.description || '';
+                        order.contact_name = order.contact_name || '';
+                        order.contact_info = order.contact_info || '';
+                        order.contact_type = order.contact_type || 'wechat';
+                        order.reward = order.reward || '3';
+                        order.notes = order.notes || '';
+                    }
                 }
                 
                 if (!order) {
@@ -5825,22 +5868,76 @@ function closeSuccessModal() {
                 const form = document.getElementById('modify-order-form');
                 const formData = new FormData(form);
                 
-                // 准备参数，两个表结构相同
-                const params = {
-                    order_id_in: orderId,
-                    user_id_in: currentUser.id,
-                    order_type_in: orderType,
-                    title_in: formData.get('title') || null,
-                    description_in: formData.get('description') || null,
-                    pickup_location_in: formData.get('pickup_location') || null,
-                    delivery_location_in: formData.get('delivery_location') || null,
-                    deadline_in: formData.get('deadline') ? new Date(formData.get('deadline')).toISOString() : null,
-                    reward_in: formData.get('reward') ? parseFloat(formData.get('reward')) : null,
-                    contact_name_in: formData.get('contact_name') || null,
-                    contact_info_in: formData.get('contact_info') || null,
-                    contact_type_in: formData.get('contact_type') || null,
-                    notes_in: formData.get('notes') || null
-                };
+                // 准备参数，处理不同订单类型的字段名差异
+                if (orderType === 'delivery') {
+                    // 对于代取订单，使用不同的函数直接更新数据库
+                    const updateData = {
+                        title: formData.get('title'),
+                        description: formData.get('description'),
+                        pickup_address: formData.get('pickup_location'), // 表单字段是 pickup_location
+                        delivery_address: formData.get('delivery_location'), // 表单字段是 delivery_location
+                        delivery_time: formData.get('deadline') ? new Date(formData.get('deadline')).toISOString() : null,
+                        reward: formData.get('reward') ? parseFloat(formData.get('reward')) : null,
+                        contact_name: formData.get('contact_name'),
+                        contact_info: formData.get('contact_info'),
+                        contact_type: formData.get('contact_type'),
+                        notes: formData.get('notes'),
+                        updated_at: new Date().toISOString()
+                    };
+                    
+                    const { error } = await supabase
+                        .from('delivery_orders')
+                        .update(updateData)
+                        .eq('id', orderId);
+                    
+                    if (error) throw error;
+                    
+                    showSuccessModal('修改成功', '代取订单信息已更新。');
+                } else {
+                    // 对于跑腿订单，使用现有的函数
+                    const params = {
+                        order_id_in: orderId,
+                        user_id_in: currentUser.id,
+                        order_type_in: orderType,
+                        title_in: formData.get('title') || null,
+                        description_in: formData.get('description') || null,
+                        pickup_location_in: formData.get('pickup_location') || null,
+                        delivery_location_in: formData.get('delivery_location') || null,
+                        deadline_in: formData.get('deadline') ? new Date(formData.get('deadline')).toISOString() : null,
+                        reward_in: formData.get('reward') ? parseFloat(formData.get('reward')) : null,
+                        contact_name_in: formData.get('contact_name') || null,
+                        contact_info_in: formData.get('contact_info') || null,
+                        contact_type_in: formData.get('contact_type') || null,
+                        notes_in: formData.get('notes') || null
+                    };
+                    
+                    // 调用数据库函数修改订单
+                    const { data, error } = await supabase.rpc('update_order_info', params);
+                    
+                    if (error) throw error;
+                    
+                    // 根据返回结果处理
+                    switch(data) {
+                        case 'SUCCESS':
+                            showSuccessModal('修改成功', '订单信息已更新。');
+                            break;
+                        case 'SUCCESS_WITH_NOTIFICATION':
+                            showSuccessModal('修改成功', '订单信息已更新，并已通知接单者。');
+                            break;
+                        case 'ORDER_NOT_FOUND':
+                            alert('订单不存在！');
+                            return;
+                        case 'NO_PERMISSION':
+                            alert('您没有权限修改此订单！');
+                            return;
+                        case 'WRONG_STATUS':
+                            alert('当前订单状态不能修改！');
+                            return;
+                        default:
+                            alert('修改失败，请重试！');
+                            return;
+                    }
+                }
                 
                 // 调用数据库函数修改订单
                 const { data, error } = await supabase.rpc('update_order_info', params);
