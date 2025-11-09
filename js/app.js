@@ -5713,16 +5713,16 @@ function closeSuccessModal() {
                         
                         if (error) throw error;
                         order = data;
-                    } catch (error) {
-                        console.error('获取delivery_orders数据出错:', error);
+                    } catch (err) {
+                        console.error('获取delivery_orders数据出错:', err);
                         // 如果字段不存在，尝试只获取基本字段
-                        const { data, error } = await supabase
+                        const { data, error: fetchError } = await supabase
                             .from('delivery_orders')
                             .select('id,created_by,status,pickup_address,delivery_address,delivery_time,pickup_code,contact_name,contact_info,contact_type,reward,taken_by,taker_name,taker_contact,taker_contact_type,created_at,updated_at')
                             .eq('id', orderId)
                             .single();
                         
-                        if (error) throw error;
+                        if (fetchError) throw fetchError;
                         order = data;
                     }
                     
