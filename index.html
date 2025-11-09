@@ -19,13 +19,62 @@
     
     <!-- 主容器 -->
     <div class="container">
+        <!-- 欢迎页面 - 新用户选择 -->
+        <div id="welcome-page" class="page active">
+            <div class="welcome-container">
+                <div class="welcome-header">
+                    <h1>欢迎使用校园服务平台</h1>
+                    <p>请选择您要使用的模式</p>
+                </div>
+                
+                <div class="welcome-options">
+                    <div class="option-card primary" onclick="showRegisterModal()">
+                        <div class="option-icon">
+                            <i class="fas fa-user-plus"></i>
+                        </div>
+                        <div class="option-content">
+                            <h3>注册账户</h3>
+                            <p>创建账户并同步数据到云端</p>
+                        </div>
+                    </div>
+                    
+                    <div class="option-card" onclick="showLoginModal()">
+                        <div class="option-icon">
+                            <i class="fas fa-sign-in-alt"></i>
+                        </div>
+                        <div class="option-content">
+                            <h3>登录账户</h3>
+                            <p>已有账户？直接登录</p>
+                        </div>
+                    </div>
+                    
+                    <div class="option-card guest" onclick="startAsGuest()">
+                        <div class="option-icon">
+                            <i class="fas fa-user-secret"></i>
+                        </div>
+                        <div class="option-content">
+                            <h3>游客模式</h3>
+                            <p>以游客身份使用（数据不会同步）</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="guest-notice">
+                    <p><i class="fas fa-exclamation-triangle"></i> 游客模式下的数据仅保存在本地，删除应用或更换设备将丢失所有数据</p>
+                </div>
+            </div>
+        </div>
+        
         <!-- 主页面/服务选择 -->
-        <div id="main-page" class="page active">
+        <div id="main-page" class="page">
             <div class="user-profile">
                 <div class="user-avatar" id="user-avatar">U</div>
                 <div class="user-info">
                     <div class="user-name" id="user-display-name">未设置用户名</div>
                     <div class="user-id" id="user-display-id">ID: 加载中...</div>
+                    <button class="account-settings-btn" onclick="showPage('settings-page')">
+                        <i class="fas fa-cog"></i> 账户设置
+                    </button>
                 </div>
             </div>
             
@@ -515,7 +564,7 @@
                     </div>
                     <div class="settings-item" id="login-section">
                         <div class="settings-label">账户同步</div>
-                        <div class="settings-value">未登录</div>
+                        <div class="settings-value" id="login-status-text">未登录</div>
                         <button class="settings-edit-btn" onclick="showLoginModal()">登录</button>
                     </div>
                     <div class="settings-item" id="register-section" style="display: none;">
@@ -665,7 +714,7 @@
     </div>
     
     <!-- 底部导航栏 -->
-    <div class="tab-bar">
+    <div id="tab-bar" class="tab-bar">
         <div class="tab-item active" onclick="showPage('main-page')">
             <div class="tab-icon"><i class="fas fa-home"></i></div>
             <div>首页</div>
