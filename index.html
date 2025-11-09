@@ -513,6 +513,21 @@
                         <div class="settings-value" id="display-user-id">加载中...</div>
                         <div style="width: 40px;"></div>
                     </div>
+                    <div class="settings-item" id="login-section">
+                        <div class="settings-label">账户同步</div>
+                        <div class="settings-value">未登录</div>
+                        <button class="settings-edit-btn" onclick="showLoginModal()">登录</button>
+                    </div>
+                    <div class="settings-item" id="register-section" style="display: none;">
+                        <div class="settings-label">账户注册</div>
+                        <div class="settings-value">创建永久账户</div>
+                        <button class="settings-edit-btn" onclick="showRegisterModal()">注册</button>
+                    </div>
+                    <div class="settings-item" id="merge-section" style="display: none;">
+                        <div class="settings-label">账户合并</div>
+                        <div class="settings-value">同步其他设备数据</div>
+                        <button class="settings-edit-btn" onclick="showMergeModal()">合并账户</button>
+                    </div>
                 </div>
                 
                 <div class="settings-section">
@@ -670,6 +685,89 @@
         <div class="tab-item" onclick="showPage('settings-page')">
             <div class="tab-icon"><i class="fas fa-cog"></i></div>
             <div>设置</div>
+        </div>
+    </div>
+
+    <!-- 登录模态框 -->
+    <div id="login-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>账户登录</h3>
+                <button class="modal-close" onclick="closeLoginModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="login-form" onsubmit="handleLogin(event)">
+                    <div class="form-group">
+                        <label for="login-username" class="form-label required">用户名</label>
+                        <input type="text" id="login-username" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password" class="form-label required">密码</label>
+                        <input type="password" id="login-password" class="form-input" required>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="closeLoginModal()">取消</button>
+                        <button type="submit" class="btn btn-primary">登录</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 注册模态框 -->
+    <div id="register-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>账户注册</h3>
+                <button class="modal-close" onclick="closeRegisterModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="register-form" onsubmit="handleRegister(event)">
+                    <div class="form-group">
+                        <label for="register-username" class="form-label required">用户名</label>
+                        <input type="text" id="register-username" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-password" class="form-label required">密码</label>
+                        <input type="password" id="register-password" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-confirm-password" class="form-label required">确认密码</label>
+                        <input type="password" id="register-confirm-password" class="form-input" required>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="closeRegisterModal()">取消</button>
+                        <button type="submit" class="btn btn-primary">注册</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 账户合并模态框 -->
+    <div id="merge-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>合并账户</h3>
+                <button class="modal-close" onclick="closeMergeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>输入您已注册的账户信息，将当前设备的数据合并到该账户</p>
+                <form id="merge-form" onsubmit="handleMerge(event)">
+                    <div class="form-group">
+                        <label for="merge-username" class="form-label required">用户名</label>
+                        <input type="text" id="merge-username" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="merge-password" class="form-label required">密码</label>
+                        <input type="password" id="merge-password" class="form-input" required>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="closeMergeModal()">取消</button>
+                        <button type="submit" class="btn btn-primary">合并</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 

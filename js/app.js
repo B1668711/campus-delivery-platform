@@ -343,35 +343,8 @@ function getVirtualUserId(userId) {
 
         // 初始化用户
 async function initUser() {
-    const deviceId = generateDeviceId();
-    let user = localStorage.getItem('currentUser');
-    
-    console.log('从 localStorage 获取的用户数据:', user);
-    
-    // 首先尝试从本地存储加载
-    if (user && user !== 'superadmin') {
-        try {
-            currentUser = JSON.parse(user);
-            console.log('成功从本地存储加载用户数据:', currentUser);
-            
-            // 添加虚拟ID
-            currentUser.virtualId = getVirtualUserId(currentUser.id);
-            
-            // 然后尝试从数据库同步（静默同步，不阻塞应用）
-            setTimeout(() => {
-                syncUserFromDatabase(deviceId).catch(console.error);
-            }, 1000);
-            
-        } catch (error) {
-            console.error('解析用户数据失败，创建新用户:', error);
-            await createNewUserInDatabase(deviceId);
-        }
-    } else {
-        console.log('未找到有效用户数据，创建新用户');
-        await createNewUserInDatabase(deviceId);
-    }
-    
-    updateUserDisplay();
+    // 使用新的用户初始化方法，支持跨设备同步
+    await initUserWithMasterAccount();
     return currentUser;
 }
 
@@ -661,18 +634,52 @@ function updateUserDisplay() {
     // 生成虚拟用户ID
     const virtualUserId = getVirtualUserId(currentUser.id);
     
-    document.getElementById('user-display-name').textContent = currentUser.name;
-    document.getElementById('user-display-id').textContent = 'ID: ' + virtualUserId;
-    document.getElementById('user-avatar').textContent = currentUser.name.charAt(0);
+    // 更新首页用户信息
+    const userDisplayName = document.getElementById('user-display-name');
+    const userDisplayId = document.getElementById('user-display-id');
+    const userAvatar = document.getElementById('user-avatar');
+    
+    if (userDisplayName) userDisplayName.textContent = currentUser.name;
+    if (userDisplayId) userDisplayId.textContent = 'ID: ' + virtualUserId;
+    if (userAvatar) userAvatar.textContent = currentUser.name.charAt(0);
     
     // 更新设置页面用户信息
-    document.getElementById('settings-user-name').textContent = currentUser.name;
-    document.getElementById('settings-user-id').textContent = 'ID: ' + virtualUserId;
-    document.getElementById('settings-user-avatar').textContent = currentUser.name.charAt(0);
+    const settingsUserName = document.getElementById('settings-user-name');
+    const settingsUserId = document.getElementById('settings-user-id');
+    const settingsUserAvatar = document.getElementById('settings-user-avatar');
+    
+    if (settingsUserName) settingsUserName.textContent = currentUser.name;
+    if (settingsUserId) settingsUserId.textContent = 'ID: ' + virtualUserId;
+    if (settingsUserAvatar) settingsUserAvatar.textContent = currentUser.name.charAt(0);
     
     // 更新设置页面详细信息
-    document.getElementById('display-user-name').textContent = currentUser.name;
-    document.getElementById('display-user-id').textContent = virtualUserId; // 使用虚拟ID
+    const displayName = document.getElementById('display-user-name');
+    const displayId = document.getElementById('display-user-id');
+    
+    if (displayName) displayName.textContent = currentUser.name;
+    if (displayId) displayId.textContent = virtualUserId; // 使用虚拟ID
+    
+    // 更新登录/注册/合并按钮显示
+    const masterUserId = localStorage.getItem('master_user_id');
+    const savedUsername = localStorage.getItem('username');
+    
+    const loginSection = document.getElementById('login-section');
+    const registerSection = document.getElementById('register-section');
+    const mergeSection = document.getElementById('merge-section');
+    
+    if (masterUserId && savedUsername) {
+        // 已登录
+        if (loginSection) loginSection.style.display = 'none';
+        if (registerSection) registerSection.style.display = 'none';
+        if (mergeSection) mergeSection.style.display = 'flex';
+        if (displayName) displayName.textContent = savedUsername;
+    } else {
+        // 未登录
+        if (loginSection) loginSection.style.display = 'flex';
+        if (registerSection) registerSection.style.display = 'flex';
+        if (mergeSection) mergeSection.style.display = 'none';
+        if (displayName && currentUser) displayName.textContent = currentUser.name || '未设置';
+    }
     
     // 更新默认信息设置
     document.getElementById('auto-fill-toggle').checked = currentUser.autoFillContact;
@@ -4403,8 +4410,345 @@ async function forceRefreshOrders() {
     }
 }
 
-        // 初始化应用 - 修改版本
-async function initApp() {
+        // 显示登录模态框
+    function showLoginModal() {
+        document.getElementById('login-modal').style.display = 'flex';
+    }
+    
+    // 关闭登录模态框
+    function closeLoginModal() {
+        document.getElementById('login-modal').style.display = 'none';
+        document.getElementById('login-form').reset();
+    }
+    
+    // 显示注册模态框
+    function showRegisterModal() {
+        document.getElementById('register-modal').style.display = 'flex';
+    }
+    
+    // 关闭注册模态框
+    function closeRegisterModal() {
+        document.getElementById('register-modal').style.display = 'none';
+        document.getElementById('register-form').reset();
+    }
+    
+    // 显示账户合并模态框
+    function showMergeModal() {
+        document.getElementById('merge-modal').style.display = 'flex';
+    }
+    
+    // 关闭账户合并模态框
+    function closeMergeModal() {
+        document.getElementById('merge-modal').style.display = 'none';
+        document.getElementById('merge-form').reset();
+    }
+    
+    // 处理登录
+    async function handleLogin(event) {
+        event.preventDefault();
+        
+        const username = document.getElementById('login-username').value.trim();
+        const password = document.getElementById('login-password').value;
+        
+        if (!username || !password) {
+            alert('请输入用户名和密码');
+            return;
+        }
+        
+        try {
+            // 调用登录函数
+            const { data, error } = await supabase.rpc('login_user', {
+                username_in: username,
+                password_in: password
+            });
+            
+            if (error) {
+                console.error('登录失败:', error);
+                alert('登录失败: ' + error.message);
+                return;
+            }
+            
+            if (data && data.length > 0 && data[0].success) {
+                // 登录成功，更新当前用户信息
+                const userData = data[0];
+                currentUser.master_user_id = userData.user_id;
+                
+                // 更新本地存储
+                localStorage.setItem('master_user_id', userData.user_id);
+                localStorage.setItem('username', username);
+                
+                // 刷新用户显示
+                updateUserDisplay();
+                
+                // 关闭模态框
+                closeLoginModal();
+                
+                // 刷新页面数据
+                await refreshAllPages();
+                
+                alert('登录成功！');
+            } else {
+                alert(data && data[0] ? data[0].message : '登录失败，请检查用户名和密码');
+            }
+        } catch (error) {
+            console.error('登录错误:', error);
+            alert('登录过程中发生错误');
+        }
+    }
+    
+    // 处理注册
+    async function handleRegister(event) {
+        event.preventDefault();
+        
+        const username = document.getElementById('register-username').value.trim();
+        const password = document.getElementById('register-password').value;
+        const confirmPassword = document.getElementById('register-confirm-password').value;
+        
+        if (!username || !password) {
+            alert('请输入用户名和密码');
+            return;
+        }
+        
+        if (password !== confirmPassword) {
+            alert('两次输入的密码不一致');
+            return;
+        }
+        
+        if (password.length < 6) {
+            alert('密码长度至少为6位');
+            return;
+        }
+        
+        try {
+            // 检查用户名是否已存在
+            const { data: existingUser, error: checkError } = await supabase
+                .from('users')
+                .select('username')
+                .eq('username', username)
+                .limit(1);
+            
+            if (checkError) {
+                console.error('检查用户名失败:', checkError);
+                alert('注册失败，请稍后再试');
+                return;
+            }
+            
+            if (existingUser && existingUser.length > 0) {
+                alert('用户名已存在，请使用其他用户名');
+                return;
+            }
+            
+            // 创建新用户，将当前用户关联到该账户
+            const { data, error } = await supabase
+                .from('users')
+                .update({
+                    username: username,
+                    password_hash: password, // 简化处理，实际应使用bcrypt
+                    master_user_id: currentUser.id // 将当前用户ID设为主账户ID
+                })
+                .eq('id', currentUser.id)
+                .select();
+            
+            if (error) {
+                console.error('注册失败:', error);
+                alert('注册失败: ' + error.message);
+                return;
+            }
+            
+            if (data && data.length > 0) {
+                // 更新本地存储
+                localStorage.setItem('master_user_id', currentUser.id);
+                localStorage.setItem('username', username);
+                
+                // 更新当前用户信息
+                currentUser.master_user_id = currentUser.id;
+                currentUser.username = username;
+                
+                // 刷新用户显示
+                updateUserDisplay();
+                
+                // 关闭模态框
+                closeRegisterModal();
+                
+                alert('注册成功！');
+            } else {
+                alert('注册失败，请稍后再试');
+            }
+        } catch (error) {
+            console.error('注册错误:', error);
+            alert('注册过程中发生错误');
+        }
+    }
+    
+    // 处理账户合并
+    async function handleMerge(event) {
+        event.preventDefault();
+        
+        const username = document.getElementById('merge-username').value.trim();
+        const password = document.getElementById('merge-password').value;
+        const deviceId = currentUser.deviceId || generateDeviceId();
+        
+        if (!username || !password) {
+            alert('请输入用户名和密码');
+            return;
+        }
+        
+        try {
+            // 调用合并账户函数
+            const { data, error } = await supabase.rpc('merge_user_accounts', {
+                username_in: username,
+                password_in: password,
+                current_device_id_in: deviceId
+            });
+            
+            if (error) {
+                console.error('合并失败:', error);
+                alert('合并失败: ' + error.message);
+                return;
+            }
+            
+            if (data && data.length > 0 && data[0].success) {
+                // 合并成功，更新当前用户信息
+                const mergeResult = data[0];
+                
+                // 更新本地存储
+                localStorage.setItem('master_user_id', mergeResult.master_user_id);
+                localStorage.setItem('username', username);
+                
+                // 更新当前用户信息
+                currentUser.master_user_id = mergeResult.master_user_id;
+                currentUser.username = username;
+                
+                // 刷新用户显示
+                updateUserDisplay();
+                
+                // 关闭模态框
+                closeMergeModal();
+                
+                // 刷新页面数据
+                await refreshAllPages();
+                
+                alert('账户合并成功！');
+            } else {
+                alert(data && data[0] ? data[0].message : '合并失败，请检查用户名和密码');
+            }
+        } catch (error) {
+            console.error('合并错误:', error);
+            alert('合并过程中发生错误');
+        }
+    }
+    
+    // 修改用户初始化函数，检查是否有主账户
+    async function initUserWithMasterAccount() {
+        const masterUserId = localStorage.getItem('master_user_id');
+        const savedUsername = localStorage.getItem('username');
+        
+        if (masterUserId && savedUsername) {
+            // 如果存在主账户信息，则从数据库加载
+            console.log('发现已保存的账户信息:', savedUsername);
+            
+            try {
+                const { data, error } = await supabase
+                    .from('users')
+                    .select('*')
+                    .eq('id', masterUserId)
+                    .single();
+                
+                if (error) {
+                    console.error('加载用户信息失败:', error);
+                    // 如果加载失败，清除本地存储
+                    localStorage.removeItem('master_user_id');
+                    localStorage.removeItem('username');
+                    await initUserWithDevice();
+                    return;
+                }
+                
+                if (data) {
+                    // 用户已登录，直接使用该账户
+                    currentUser = {
+                        id: data.id,
+                        deviceId: generateDeviceId(), // 生成新设备ID
+                        name: data.name || savedUsername,
+                        username: savedUsername,
+                        master_user_id: data.id
+                    };
+                    
+                    // 将当前设备关联到主账户
+                    await updateDeviceAssociation(data.id);
+                    
+                    // 更新用户界面
+                    updateUserDisplay();
+                    console.log('使用已有账户:', currentUser);
+                    return;
+                }
+            } catch (error) {
+                console.error('初始化用户失败:', error);
+                // 如果出错，清除本地存储
+                localStorage.removeItem('master_user_id');
+                localStorage.removeItem('username');
+                await initUserWithDevice();
+                return;
+            }
+        } else {
+            // 没有主账户信息，使用设备ID初始化
+            await initUserWithDevice();
+        }
+    }
+    
+    // 更新设备关联
+    async function updateDeviceAssociation(masterUserId) {
+        try {
+            const { error } = await supabase
+                .from('users')
+                .update({ master_user_id: masterUserId })
+                .eq('device_id', currentUser.deviceId);
+            
+            if (error) {
+                console.error('更新设备关联失败:', error);
+            }
+        } catch (error) {
+            console.error('更新设备关联异常:', error);
+        }
+    }
+    
+    // 修改原有的initUser函数
+    async function initUserWithDevice() {
+        // 原有的initUser代码，从数据库同步或创建新用户
+        try {
+            const deviceId = generateDeviceId();
+            
+            // 从数据库同步用户数据
+            const syncResult = await syncUserFromDatabase(deviceId);
+            if (syncResult) {
+                // 同步成功，更新用户界面
+                updateUserDisplay();
+                return;
+            }
+            
+            // 如果没有找到用户数据，创建新用户
+            await createNewUserInDatabase(deviceId);
+            updateUserDisplay();
+            
+        } catch (error) {
+            console.error('初始化用户失败:', error);
+            
+            // 如果数据库操作失败，降级到本地模式
+            const deviceId = generateDeviceId();
+            createNewUserLocal(deviceId);
+            updateUserDisplay();
+        }
+    }
+
+    // 修改initUser函数
+    async function initUser() {
+        console.log('开始初始化用户...');
+        
+        // 首先尝试使用主账户信息初始化
+        await initUserWithMasterAccount();
+    }
+    
+    // 初始化应用 - 修改版本
+    async function initApp() {
     // 清理可能存在的无效用户数据
     clearInvalidUserData();
     
