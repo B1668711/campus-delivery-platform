@@ -5703,15 +5703,28 @@ function closeSuccessModal() {
             try {
                 let order;
                 if (orderType === 'delivery') {
-                    // 直接从数据库获取指定订单的详细信息
-                    const { data, error } = await supabase
-                        .from('delivery_orders')
-                        .select('*')
-                        .eq('id', orderId)
-                        .single();
-                    
-                    if (error) throw error;
-                    order = data;
+                    // 直接从数据库获取指定订单的详细信息，使用try-catch处理可能的字段缺失错误
+                    try {
+                        const { data, error } = await supabase
+                            .from('delivery_orders')
+                            .select('*')
+                            .eq('id', orderId)
+                            .single();
+                        
+                        if (error) throw error;
+                        order = data;
+                    } catch (error) {
+                        console.error('获取delivery_orders数据出错:', error);
+                        // 如果字段不存在，尝试只获取基本字段
+                        const { data, error } = await supabase
+                            .from('delivery_orders')
+                            .select('id,created_by,status,pickup_address,delivery_address,delivery_time,pickup_code,contact_name,contact_info,contact_type,reward,taken_by,taker_name,taker_contact,taker_contact_type,created_at,updated_at')
+                            .eq('id', orderId)
+                            .single();
+                        
+                        if (error) throw error;
+                        order = data;
+                    }
                     
                     // 对于代取订单，需要映射字段名以确保表单正确填充
                     if (order) {
